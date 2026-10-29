@@ -1,0 +1,359 @@
+<script>
+  const estado = { painel: null, aba: 'painel', metaEditando: null, areaEditando: null };
+  const $ = (seletor) => document.querySelector(seletor);
+
+  // ---------- Comunicação com o Apps Script ----------
+
+  function chamar(funcao, ...args) {
+    return new Promise((resolver, rejeitar) => {
+      google.script.run
+        .withSuccessHandler(resolver)
+        .withFailureHandler(rejeitar)[funcao](...args);
+    });
+  }
+
+  async function executar(funcao, ...args) {
+    $('#carregando').hidden = false;
+    try {
+      const painel = await chamar(funcao, ...args);
+      if (painel) aplicarPainel(painel);
+      return true;
+    } catch (erro) {
+      avisar(erro.message || String(erro));
+      return false;
+    } finally {
+      $('#carregando').hidden = true;
+    }
+  }
+
+  function avisar(mensagem) {
+    const aviso = $('#aviso');
+    aviso.textContent = mensagem;
+    aviso.hidden = false;
+    clearTimeout(avisar.timer);
+    avisar.timer = setTimeout(() => { aviso.hidden = true; }, 5000);
+  }
+
+  // ---------- Utilidades ----------
+
+  const esc = (texto) => String(texto ?? '').replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+  const fmt = (n) => Number(n || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+  const pct = (n) => fmt(n) + '%';
+  const areaPorId = (id) => estado.painel.areas.find((a) => a.id === id);
+  const resumoDaArea = (id) => estado.painel.resumo.porArea.find((r) => r.areaId === id);
+  const metasDaArea = (id) => estado.painel.metas.filter((m) => m.areaId === id);
+
+  function barra(valor, cor, classe = '') {
+    const largura = Math.max(0, Math.min(100, valor));
+    return `<div class="barra ${classe}"><div style="width:${largura}%;background:${esc(cor)}"></div></div>`;
+  }
+
+  function textoPesos(r) {
+    if (r.qtdMetas === 0) return '<div class="pesos">Nenhuma meta neste semestre.</div>';
+    if (r.faltaPeso === 0) return '<div class="pesos ok">✓ Pesos somam 100%</div>';
+    const msg = r.faltaPeso > 0 ? `faltam ${pct(r.faltaPeso)}` : `passou ${pct(-r.faltaPeso)}`;
+    return `<div class="pesos alerta">⚠ Pesos somam ${pct(r.somaPesos)} — ${msg}</div>`;
+  }
+
+  // ---------- Renderização ----------
+
+  function aplicarPainel(painel) {
+    estado.painel = painel;
+    $('#sem-rotulo').textContent = painel.rotulo;
+    $('#sem-id').textContent = painel.semestre + (painel.semestre === painel.semestreAtual ? ' · atual' : ' · ir ao atual');
+    $('#nota-geral').textContent = painel.resumo.areasAvaliadas ? pct(painel.resumo.notaGeral) : '–';
+    renderizarPainel();
+    renderizarRelatorio();
+    renderizarAreas();
+  }
+
+  function renderizarPainel() {
+    const p = estado.painel;
+    const secao = $('#aba-painel');
+    if (!p.resumo.porArea.length) {
+      secao.innerHTML = '<div class="vazio">Nenhuma área ativa. Crie uma na aba <b>Áreas</b>.</div>';
+      return;
+    }
+    let html = '';
+    if (!p.metas.length && p.metasNoAnterior) {
+      html += `<div class="cartao vazio">
+        Semestre sem metas ainda.<br><br>
+        <button class="secundario" id="btn-copiar">Copiar ${p.metasNoAnterior} metas de ${esc(p.anterior)}</button>
+        <div class="etiqueta" style="margin-top:6px">Copia título e peso, com o % feito zerado.</div>
+      </div>`;
+    }
+    html += p.resumo.porArea.map((r) => {
+      const area = areaPorId(r.areaId);
+      const metas = metasDaArea(r.areaId).map((m) => `
+        <li><button class="meta" data-meta="${esc(m.id)}">
+          <div class="meta-linha">
+            <span class="meta-titulo">${esc(m.titulo)}</span>
+            <span class="meta-pontos">${fmt(m.pontos)}/${fmt(m.peso)}</span>
+          </div>
+          <div class="meta-info">peso ${pct(m.peso)} · feito ${pct(m.feito)}</div>
+          ${barra(m.feito, area.cor, 'fina')}
+        </button></li>`).join('');
+      return `<div class="cartao">
+        <div class="area-topo">
+          <span class="area-icone">${esc(area.icone)}</span>
+          <div class="area-nome">${esc(area.nome)}<div class="area-visao">${esc(area.visao)}</div></div>
+          <span class="area-nota">${r.qtdMetas ? pct(r.pontos) : '–'}</span>
+        </div>
+        ${barra(r.pontos, area.cor)}
+        ${textoPesos(r)}
+        <ul class="metas">${metas}</ul>
+        <button class="btn-link" data-nova-meta="${esc(area.id)}">+ Nova meta</button>
+      </div>`;
+    }).join('');
+    secao.innerHTML = html;
+  }
+
+  function renderizarRelatorio() {
+    const p = estado.painel;
+    const secao = $('#aba-relatorio');
+    const areasComMetas = p.resumo.porArea.filter((r) => r.qtdMetas > 0);
+    if (!areasComMetas.length) {
+      secao.innerHTML = '<div class="vazio">Sem metas neste semestre — nada para relatar ainda.</div>';
+      return;
+    }
+    const blocos = areasComMetas.map((r) => {
+      const area = areaPorId(r.areaId);
+      const linhas = metasDaArea(r.areaId).map((m) => `
+        <tr>
+          <td>${esc(m.titulo)}${m.ultimoComentario ? `<div class="comentario">“${esc(m.ultimoComentario)}”</div>` : ''}</td>
+          <td class="num">${pct(m.peso)}</td>
+          <td class="num">${pct(m.feito)}</td>
+          <td class="num"><b>${fmt(m.pontos)}</b></td>
+        </tr>`).join('');
+      return `<div class="cartao">
+        <div class="area-topo">
+          <span class="area-icone">${esc(area.icone)}</span>
+          <div class="area-nome">${esc(area.nome)}</div>
+          <span class="area-nota">${pct(r.pontos)}</span>
+        </div>
+        ${barra(r.pontos, area.cor)}
+        ${r.faltaPeso !== 0 ? textoPesos(r) : ''}
+        <table>
+          <thead><tr><th>Meta</th><th class="num">Peso</th><th class="num">Feito</th><th class="num">Pontos</th></tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+
+    secao.innerHTML = `<div class="relatorio">
+      <div class="acoes-relatorio">
+        <button class="primario" id="btn-copiar-relatorio">📋 Copiar texto (WhatsApp)</button>
+        <button class="secundario" id="btn-imprimir">🖨️ Imprimir / PDF</button>
+      </div>
+      <div class="cartao">
+        <h2>Relatório do semestre</h2>
+        <div class="suave">${esc(p.rotulo)} (${esc(p.semestre)}) · ${areasComMetas.length} áreas avaliadas</div>
+        <div class="area-topo" style="margin-top:10px">
+          <div class="area-nome">Nota geral <span class="etiqueta">(média simples das áreas)</span></div>
+          <span class="area-nota">${pct(p.resumo.notaGeral)}</span>
+        </div>
+        ${barra(p.resumo.notaGeral, 'var(--primaria)')}
+      </div>
+      ${blocos}
+      <textarea id="texto-relatorio" class="texto-relatorio" readonly hidden></textarea>
+    </div>`;
+  }
+
+  function textoDoRelatorio() {
+    const p = estado.painel;
+    const linhas = [
+      `📊 *Relatório do semestre — ${p.rotulo}* (${p.semestre})`,
+      `Nota geral: *${pct(p.resumo.notaGeral)}*`,
+    ];
+    p.resumo.porArea.filter((r) => r.qtdMetas > 0).forEach((r) => {
+      const area = areaPorId(r.areaId);
+      linhas.push('', `${area.icone} *${area.nome}* — ${pct(r.pontos)}`);
+      metasDaArea(r.areaId).forEach((m) => {
+        linhas.push(`• ${m.titulo}: ${fmt(m.pontos)}/${fmt(m.peso)} pts (${pct(m.feito)} feito)`);
+        if (m.ultimoComentario) linhas.push(`   _${m.ultimoComentario}_`);
+      });
+    });
+    return linhas.join('\n');
+  }
+
+  async function copiarRelatorio() {
+    const texto = textoDoRelatorio();
+    try {
+      await navigator.clipboard.writeText(texto);
+      avisarOk('Relatório copiado! Cole no WhatsApp.');
+    } catch (e) {
+      // O app roda num iframe do Google, onde a área de transferência pode ser bloqueada.
+      const campo = $('#texto-relatorio');
+      campo.value = texto;
+      campo.hidden = false;
+      campo.select();
+      const copiou = document.execCommand && document.execCommand('copy');
+      avisarOk(copiou ? 'Relatório copiado! Cole no WhatsApp.' : 'Selecione o texto abaixo e copie.');
+    }
+  }
+
+  function avisarOk(mensagem) {
+    avisar(mensagem);
+    $('#aviso').style.background = 'var(--ok)';
+    setTimeout(() => { $('#aviso').style.background = ''; }, 5000);
+  }
+
+  function renderizarAreas() {
+    const p = estado.painel;
+    const lista = [...p.areas].sort((a, b) => a.ordem - b.ordem).map((a) => `
+      <div class="cartao">
+        <button class="area-lista ${a.ativa ? '' : 'inativa'}" data-area="${esc(a.id)}">
+          <span class="area-icone">${esc(a.icone)}</span>
+          <div class="area-nome">${esc(a.nome)}
+            <div class="area-visao">${esc(a.visao) || '<i>sem visão definida</i>'}</div>
+          </div>
+          <span class="etiqueta">${a.ativa ? 'editar' : 'inativa'}</span>
+        </button>
+        <div style="height:4px;margin-top:10px;border-radius:99px;background:${esc(a.cor)}"></div>
+      </div>`).join('');
+    $('#aba-areas').innerHTML = lista + '<button class="primario" id="btn-nova-area" style="width:100%">+ Nova área</button>';
+  }
+
+  // ---------- Diálogo de meta ----------
+
+  function abrirMeta(meta, areaId) {
+    const form = $('#form-meta');
+    estado.metaEditando = meta;
+    $('#dlg-meta-titulo').textContent = meta ? 'Editar meta' : 'Nova meta';
+    form.areaId.innerHTML = estado.painel.areas
+      .filter((a) => a.ativa || (meta && a.id === meta.areaId))
+      .map((a) => `<option value="${esc(a.id)}">${esc(a.icone)} ${esc(a.nome)}</option>`).join('');
+    form.areaId.value = meta ? meta.areaId : areaId;
+    form.titulo.value = meta ? meta.titulo : '';
+    form.criterio.value = meta ? meta.criterio : '';
+    form.feito.value = meta ? meta.feito : 0;
+    form.comentario.value = '';
+    form.peso.value = meta ? meta.peso : (sugerirPeso(form.areaId.value) || '');
+    $('#btn-excluir-meta').hidden = !meta;
+    atualizarDicasMeta();
+
+    const historico = $('#historico');
+    historico.hidden = !meta;
+    historico.open = false;
+    $('#historico-lista').innerHTML = '';
+    if (meta) {
+      chamar('obterHistorico', meta.id).then((itens) => {
+        $('#historico-lista').innerHTML = itens.length
+          ? itens.map((i) => `<li><b>${new Date(i.data).toLocaleDateString('pt-BR')}</b> — ${pct(i.feito)}${i.comentario ? `: ${esc(i.comentario)}` : ''}</li>`).join('')
+          : '<li class="suave">Sem avaliações ainda.</li>';
+      }).catch(() => {});
+    }
+    $('#dlg-meta').showModal();
+  }
+
+  /** Peso que ainda falta para a área fechar 100% (sem contar a meta em edição). */
+  function pesoLivre(areaId) {
+    const usado = metasDaArea(areaId)
+      .filter((m) => !estado.metaEditando || m.id !== estado.metaEditando.id)
+      .reduce((s, m) => s + m.peso, 0);
+    return Math.round((100 - usado) * 10) / 10;
+  }
+
+  function sugerirPeso(areaId) {
+    const livre = pesoLivre(areaId);
+    return livre > 0 ? livre : 0;
+  }
+
+  function atualizarDicasMeta() {
+    const form = $('#form-meta');
+    const peso = Number(form.peso.value) || 0;
+    const feito = Number(form.feito.value) || 0;
+    const sobra = Math.round((pesoLivre(form.areaId.value) - peso) * 10) / 10;
+    $('#peso-dica').textContent = sobra === 0 ? '✓ Área fecha 100%'
+      : sobra > 0 ? `Sobra na área: ${pct(sobra)}` : `⚠ Área passa de 100% em ${pct(-sobra)}`;
+    $('#feito-valor').textContent = pct(feito);
+    $('#feito-pontos').textContent = `= ${fmt(peso * feito / 100)} de ${fmt(peso)} pts`;
+  }
+
+  async function salvarMetaForm(evento) {
+    evento.preventDefault();
+    const form = $('#form-meta');
+    const meta = {
+      id: estado.metaEditando ? estado.metaEditando.id : '',
+      semestre: estado.painel.semestre,
+      areaId: form.areaId.value,
+      titulo: form.titulo.value,
+      criterio: form.criterio.value,
+      peso: Number(form.peso.value),
+      feito: Number(form.feito.value),
+    };
+    if (await executar('salvarMeta', meta, form.comentario.value)) $('#dlg-meta').close();
+  }
+
+  async function excluirMetaAtual() {
+    const meta = estado.metaEditando;
+    if (!meta || !confirm(`Excluir a meta "${meta.titulo}"?`)) return;
+    if (await executar('excluirMeta', meta.id, estado.painel.semestre)) $('#dlg-meta').close();
+  }
+
+  // ---------- Diálogo de área ----------
+
+  function abrirArea(area) {
+    const form = $('#form-area');
+    estado.areaEditando = area;
+    $('#dlg-area-titulo').textContent = area ? 'Editar área' : 'Nova área';
+    form.icone.value = area ? area.icone : '';
+    form.nome.value = area ? area.nome : '';
+    form.cor.value = area ? area.cor : '#7c5cff';
+    form.visao.value = area ? area.visao : '';
+    form.ativa.checked = area ? area.ativa : true;
+    $('#dlg-area').showModal();
+  }
+
+  async function salvarAreaForm(evento) {
+    evento.preventDefault();
+    const form = $('#form-area');
+    const area = {
+      id: estado.areaEditando ? estado.areaEditando.id : '',
+      icone: form.icone.value,
+      nome: form.nome.value,
+      cor: form.cor.value,
+      visao: form.visao.value,
+      ativa: form.ativa.checked,
+    };
+    if (await executar('salvarArea', area, estado.painel.semestre)) $('#dlg-area').close();
+  }
+
+  // ---------- Navegação e eventos ----------
+
+  function mostrarAba(aba) {
+    estado.aba = aba;
+    document.querySelectorAll('.abas button').forEach((b) => b.classList.toggle('ativa', b.dataset.aba === aba));
+    ['painel', 'relatorio', 'areas'].forEach((nome) => { $('#aba-' + nome).hidden = nome !== aba; });
+  }
+
+  document.addEventListener('click', (e) => {
+    const alvo = e.target.closest('button');
+    if (!alvo || !estado.painel) return;
+    if (alvo.dataset.aba) mostrarAba(alvo.dataset.aba);
+    else if (alvo.dataset.meta) abrirMeta(estado.painel.metas.find((m) => m.id === alvo.dataset.meta));
+    else if (alvo.dataset.novaMeta) abrirMeta(null, alvo.dataset.novaMeta);
+    else if (alvo.dataset.area) abrirArea(areaPorId(alvo.dataset.area));
+    else if (alvo.hasAttribute('data-fechar')) alvo.closest('dialog').close();
+    else if (alvo.id === 'btn-nova-area') abrirArea(null);
+    else if (alvo.id === 'btn-excluir-meta') excluirMetaAtual();
+    else if (alvo.id === 'btn-copiar') executar('copiarMetas', estado.painel.anterior, estado.painel.semestre);
+    else if (alvo.id === 'btn-copiar-relatorio') copiarRelatorio();
+    else if (alvo.id === 'btn-imprimir') window.print();
+    else if (alvo.id === 'sem-anterior') executar('obterPainel', estado.painel.anterior);
+    else if (alvo.id === 'sem-proximo') executar('obterPainel', estado.painel.proximo);
+    else if (alvo.id === 'sem-id') executar('obterPainel', estado.painel.semestreAtual);
+  });
+
+  $('#form-meta').addEventListener('submit', salvarMetaForm);
+  $('#form-meta').addEventListener('input', atualizarDicasMeta);
+  $('#form-meta').areaId.addEventListener('change', () => {
+    if (!estado.metaEditando) $('#form-meta').peso.value = sugerirPeso($('#form-meta').areaId.value) || '';
+    atualizarDicasMeta();
+  });
+  $('#form-area').addEventListener('submit', salvarAreaForm);
+
+  executar('obterPainel', null);
+</script>

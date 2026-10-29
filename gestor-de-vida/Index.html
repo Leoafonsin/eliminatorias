@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <?!= incluir('Estilo'); ?>
+  </head>
+  <body>
+    <header class="topo">
+      <div class="semestre">
+        <button id="sem-anterior" class="icone-btn" aria-label="Semestre anterior">‹</button>
+        <div class="semestre-texto">
+          <div id="sem-rotulo" class="sem-rotulo">Carregando…</div>
+          <button id="sem-id" class="sem-id" title="Voltar ao semestre atual"></button>
+        </div>
+        <button id="sem-proximo" class="icone-btn" aria-label="Próximo semestre">›</button>
+      </div>
+      <div class="nota-geral" title="Média simples das áreas">
+        <span id="nota-geral">–</span>
+        <small>geral</small>
+      </div>
+    </header>
+
+    <nav class="abas">
+      <button data-aba="painel" class="ativa">⚖️ Semestre</button>
+      <button data-aba="relatorio">📊 Relatório</button>
+      <button data-aba="areas">🧭 Áreas</button>
+    </nav>
+
+    <main>
+      <section id="aba-painel"></section>
+      <section id="aba-relatorio" hidden></section>
+      <section id="aba-areas" hidden></section>
+    </main>
+
+    <dialog id="dlg-meta">
+      <form id="form-meta" method="dialog">
+        <h2 id="dlg-meta-titulo">Nova meta</h2>
+        <label>Área
+          <select name="areaId" required></select>
+        </label>
+        <label>Meta
+          <input name="titulo" required maxlength="120" placeholder="Ex.: Meditar 10 min por dia">
+        </label>
+        <label>Critério de sucesso <small>(como sei que cumpri?)</small>
+          <textarea name="criterio" rows="2" placeholder="Ex.: 150 dias meditando no semestre"></textarea>
+        </label>
+        <div class="linha-dupla">
+          <label>Peso (%)
+            <input name="peso" type="number" min="1" max="100" step="0.5" required>
+          </label>
+          <div class="peso-dica" id="peso-dica"></div>
+        </div>
+        <label>Quanto já fiz: <strong id="feito-valor">0%</strong> <span id="feito-pontos" class="suave"></span>
+          <input name="feito" type="range" min="0" max="100" step="5" value="0">
+        </label>
+        <label>Comentário da avaliação <small>(opcional)</small>
+          <textarea name="comentario" rows="2" placeholder="O que avancei? O que travou?"></textarea>
+        </label>
+        <details id="historico" hidden>
+          <summary>Histórico</summary>
+          <ul id="historico-lista" class="historico"></ul>
+        </details>
+        <div class="botoes">
+          <button type="button" id="btn-excluir-meta" class="perigo">Excluir</button>
+          <span class="espaco"></span>
+          <button type="button" data-fechar>Cancelar</button>
+          <button type="submit" class="primario">Salvar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="dlg-area">
+      <form id="form-area" method="dialog">
+        <h2 id="dlg-area-titulo">Nova área</h2>
+        <div class="linha-dupla">
+          <label class="curto">Ícone
+            <input name="icone" maxlength="4" placeholder="⭐">
+          </label>
+          <label>Nome
+            <input name="nome" required maxlength="40" placeholder="Ex.: Espiritual">
+          </label>
+          <label class="curto">Cor
+            <input name="cor" type="color" value="#7c5cff">
+          </label>
+        </div>
+        <label>Visão <small>(o que é me desenvolver nesta área?)</small>
+          <textarea name="visao" rows="2"></textarea>
+        </label>
+        <label class="checkbox">
+          <input name="ativa" type="checkbox" checked> Área ativa
+        </label>
+        <div class="botoes">
+          <span class="espaco"></span>
+          <button type="button" data-fechar>Cancelar</button>
+          <button type="submit" class="primario">Salvar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="carregando" class="carregando" hidden>Salvando…</div>
+    <div id="aviso" class="aviso" hidden></div>
+
+    <?!= incluir('App'); ?>
+  </body>
+</html>
