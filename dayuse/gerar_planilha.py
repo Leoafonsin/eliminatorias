@@ -5,7 +5,7 @@ Uso:
     python dayuse/gerar_planilha.py alunos.xlsx          # já importa os alunos
     python dayuse/gerar_planilha.py alunos.csv
 
-O arquivo de alunos precisa ter colunas com os nomes Nome, CPF, Telefone e Matricula
+O arquivo de alunos precisa ter colunas com os nomes Nome, CPF, Telefone, Matricula e Email
 (maiúsculas/acentos não importam; só Nome é obrigatória).
 """
 
@@ -24,7 +24,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 SAIDA = Path(__file__).with_name("DayUse.xlsx")
 
 CABECALHOS = {
-    "Pessoas": ["ID", "Nome", "Tipo", "CPF", "Telefone", "Matricula", "Ativo", "DataCadastro", "Observacao"],
+    "Pessoas": ["ID", "Nome", "Tipo", "CPF", "Telefone", "Email", "Matricula", "Ativo", "DataCadastro", "Observacao"],
     "Presencas": ["ID", "Data", "Turno", "Pessoa", "Nome", "Tipo", "Valor", "Pago", "FormaPagamento",
                   "HoraEntrada", "Observacao"],
     "Precos": ["Chave", "Turno", "Tipo", "Valor"],
@@ -75,18 +75,19 @@ def ler_alunos(caminho):
     if i_nome is None:
         sys.exit(f"Não achei a coluna Nome. Cabeçalhos encontrados: {linhas[0]}")
     i_cpf, i_tel, i_mat = col("cpf"), col("telefone", "celular", "fone"), col("matricula", "mat")
+    i_email = col("email", "e-mail")
 
     def pegar(linha, i):
         return linha[i] if i is not None and i < len(linha) and linha[i] is not None else ""
 
     for linha in linhas[1:]:
-        yield pegar(linha, i_nome), pegar(linha, i_cpf), pegar(linha, i_tel), pegar(linha, i_mat)
+        yield pegar(linha, i_nome), pegar(linha, i_cpf), pegar(linha, i_tel), pegar(linha, i_mat), pegar(linha, i_email)
 
 
 def montar_pessoas(alunos):
     cpfs, mats, nomes = set(), set(), set()
     pessoas, avisos, ignorados = [], [], 0
-    for nome, cpf, tel, mat in alunos:
+    for nome, cpf, tel, mat, email in alunos:
         nome = str(nome).strip()
         if not nome:
             continue
@@ -99,7 +100,8 @@ def montar_pessoas(alunos):
         cpfs.add(cpf)
         mats.add(mat)
         nomes.add(chave)
-        pessoas.append([uuid.uuid4().hex[:8], nome, "Aluno", cpf, str(tel).strip(), mat, True, date.today(), ""])
+        pessoas.append([uuid.uuid4().hex[:8], nome, "Aluno", cpf, str(tel).strip(), str(email).strip().lower(), mat,
+                        True, date.today(), ""])
     return pessoas, avisos, ignorados
 
 
@@ -125,9 +127,9 @@ def gerar(pessoas):
     for p in pessoas:
         ws.append(p)
     for r in range(2, max(ws.max_row, 2000) + 1):
-        ws.cell(r, 4).number_format = "@"
-        ws.cell(r, 6).number_format = "@"
-        ws.cell(r, 8).number_format = "DD/MM/YYYY"
+        for c in (4, 5, 6, 7):
+            ws.cell(r, c).number_format = "@"
+        ws.cell(r, 9).number_format = "DD/MM/YYYY"
     lista(ws, "C2:C5000", ["Aluno", "Visitante"])
     ws.freeze_panes = "A2"
 
@@ -182,7 +184,7 @@ def gerar(pessoas):
         ws.cell(r, 2, f"=COUNTIFS({filtro})")
         ws.cell(r, 3, f"=SUMIFS(Presencas!$G:$G,{filtro})").number_format = MOEDA
 
-    larguras = {"Pessoas": [10, 35, 11, 14, 16, 12, 8, 13, 30],
+    larguras = {"Pessoas": [10, 35, 11, 14, 16, 30, 12, 8, 13, 30],
                 "Presencas": [10, 12, 9, 10, 35, 11, 11, 8, 15, 11, 30],
                 "Precos": [18, 9, 11, 10], "Resumo": [12, 12, 10, 16, 16, 12]}
     for nome, ls in larguras.items():

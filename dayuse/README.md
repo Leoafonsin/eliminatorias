@@ -1,5 +1,9 @@
 # Day Use – Controle de presença (Google Sheets + AppSheet)
 
+> **App em uso:** a pasta [`app/`](app/index.html) tem o app web (publicado no claude.ai) que registra entradas
+> direto na planilha pelo conector do Google Sheets. Visitantes são cadastrados com nome completo, e-mail e telefone.
+> O guia do AppSheet abaixo continua valendo como alternativa.
+
 App para registrar quem entra no day use (manhã e tarde), cadastrar visitantes na hora
 e saber quanto foi arrecadado em cada dia.
 
@@ -67,6 +71,7 @@ O arquivo [`DayUse.xlsx`](DayUse.xlsx) já vem com todas as abas, preços, lista
 | Tipo | Enum | Valores: `Aluno`, `Visitante`. Initial value: `"Visitante"`. Required. |
 | CPF | Text | Valid if: ver fórmula abaixo (11 dígitos e sem duplicar). |
 | Telefone | Phone | |
+| Email | Email | Required if: `[Tipo] = "Visitante"` |
 | Matricula | Text | Show if: `[Tipo] = "Aluno"`. Required if: `[Tipo] = "Aluno"`. Valid if: `NOT(IN([_THIS], SELECT(Pessoas[Matricula], [ID] <> [_THISROW].[ID])))` |
 | Ativo | Yes/No | Initial value: `TRUE` |
 | DataCadastro | Date | Initial value: `TODAY()`. Editable: desmarcado. |
