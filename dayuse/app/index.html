@@ -162,7 +162,7 @@ form.card { border-color: var(--line); }
     <div id="buscaBox" style="display:flex;flex-direction:column;gap:10px">
       <p class="label" style="margin:0">Quem está entrando?</p>
       <div class="search">
-        <input id="busca" type="search" placeholder="Nome, matrícula ou CPF" autocomplete="off" aria-label="Buscar pessoa">
+        <input id="busca" type="search" placeholder="Nome, matrícula, CPF ou e-mail" autocomplete="off" aria-label="Buscar pessoa">
         <button class="btn ghost" id="btnNovo" type="button">+ Visitante</button>
       </div>
       <div class="list" id="resultados"></div>
@@ -175,9 +175,10 @@ form.card { border-color: var(--line); }
         <button type="button" data-tipo="Aluno" aria-pressed="false">Aluno</button>
       </div>
       <div class="field"><label for="fNome">Nome completo *</label><input id="fNome" autocomplete="off"></div>
-      <div class="field"><label for="fCpf">CPF</label><input id="fCpf" inputmode="numeric" autocomplete="off" placeholder="Só números"></div>
-      <div class="field"><label for="fTel">Telefone</label><input id="fTel" inputmode="tel" autocomplete="off"></div>
+      <div class="field"><label for="fEmail" id="lEmail">E-mail *</label><input id="fEmail" type="email" inputmode="email" autocomplete="off" placeholder="nome@exemplo.com"></div>
+      <div class="field"><label for="fTel" id="lTel">Telefone *</label><input id="fTel" inputmode="tel" autocomplete="off" placeholder="(21) 99999-9999"></div>
       <div class="field" id="boxMat" hidden><label for="fMat">Matrícula *</label><input id="fMat" autocomplete="off"></div>
+      <div class="field" id="boxCpf" hidden><label for="fCpf">CPF</label><input id="fCpf" inputmode="numeric" autocomplete="off" placeholder="Só números"></div>
       <div class="hint" id="formErro" style="color:var(--bad)"></div>
       <button class="btn big" id="btnSalvarPessoa" type="submit">Salvar e selecionar</button>
       <button class="link" id="btnCancelarNovo" type="button">Cancelar</button>
@@ -278,10 +279,10 @@ async function carregar(silencioso = false) {
   if (!st.mcp) return;
   $("status").textContent = "Sincronizando…";
   try {
-    const [pes, pre, prc] = await Promise.all([ler("Pessoas!A2:I"), ler("Presencas!A2:K"), ler("Precos!A2:D")]);
-    st.pessoas = pes.map((r, i) => ({ row: i + 2, id: r[0], nome: (r[1] || "").trim(), tipo: r[2] === "Aluno" ? "Aluno" : "Visitante", cpf: digitos(r[3]), tel: r[4] || "", mat: (r[5] || "").trim(), ativo: r[6] === undefined || r[6] === "" || verdadeiro(r[6]) }))
+    const [pes, pre, prc] = await Promise.all([ler("Pessoas!A2:J"), ler("Presencas!A2:K"), ler("Precos!A2:D")]);
+    st.pessoas = pes.map((r, i) => ({ row: i + 2, id: r[0], nome: (r[1] || "").trim(), tipo: r[2] === "Aluno" ? "Aluno" : "Visitante", cpf: digitos(r[3]), tel: r[4] || "", email: (r[5] || "").trim().toLowerCase(), mat: (r[6] || "").trim(), ativo: r[7] === undefined || r[7] === "" || verdadeiro(r[7]) }))
       .filter(p => p.id && p.nome && p.ativo);
-    st.pessoas.forEach(p => { p.busca = norm(p.nome) + " " + norm(p.mat); });
+    st.pessoas.forEach(p => { p.busca = norm(p.nome) + " " + norm(p.mat) + " " + p.email; });
     st.presencas = pre.map((r, i) => ({ row: i + 2, id: r[0], data: normData(r[1]), turno: r[2], pessoa: r[3], nome: r[4], tipo: r[5], valor: dinheiro(r[6]), pago: verdadeiro(r[7]), forma: r[8] || "", hora: r[9] || "" }))
       .filter(x => x.id);
     st.precos = { ...PRECO_PADRAO };
@@ -321,22 +322,28 @@ async function registrar() {
 async function salvarPessoa(ev) {
   ev.preventDefault(); if (st.ocupado) return;
   const nome = $("fNome").value.trim().replace(/\s+/g, " ");
-  const cpf = digitos($("fCpf").value);
-  const tel = $("fTel").value.trim();
-  const mat = $("fMat").value.trim().toUpperCase();
   const tipo = st.tipoNovo;
+  const cpf = tipo === "Aluno" ? digitos($("fCpf").value) : "";
+  const tel = $("fTel").value.trim();
+  const email = $("fEmail").value.trim().toLowerCase();
+  const mat = tipo === "Aluno" ? $("fMat").value.trim().toUpperCase() : "";
   const erro = msg => { $("formErro").textContent = msg; };
   if (nome.length < 3) return erro("Digite o nome completo.");
+  if (tipo === "Visitante" && !email) return erro("Digite o e-mail.");
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return erro("Esse e-mail não parece válido. Confira se tem @ e o domínio.");
+  if (tipo === "Visitante" && digitos(tel).length < 10) return erro("Digite o telefone com DDD.");
+  if (tel && digitos(tel).length < 10) return erro("O telefone precisa ter DDD.");
+  if (email) { const d = st.pessoas.find(x => x.email === email); if (d) return erro(`Esse e-mail já está cadastrado para ${d.nome}.`); }
   if (cpf && cpf.length !== 11) return erro("O CPF precisa ter 11 números.");
   if (cpf) { const d = st.pessoas.find(x => x.cpf === cpf); if (d) return erro(`Esse CPF já está cadastrado para ${d.nome}.`); }
   if (tipo === "Aluno" && !mat) return erro("Aluno precisa de matrícula.");
   if (mat) { const d = st.pessoas.find(x => x.mat.toUpperCase() === mat); if (d) return erro(`Essa matrícula já é de ${d.nome}.`); }
   erro("");
-  const nova = { id: uid(), nome, tipo, cpf, tel, mat, ativo: true };
+  const nova = { id: uid(), nome, tipo, cpf, tel, email, mat, ativo: true };
   st.ocupado = true; render();
   try {
-    await gravarNovaLinha("Pessoas", "I", [nova.id, nome, tipo, cpf ? "'" + cpf : "", tel ? "'" + tel : "", mat ? "'" + mat : "", true, hojeStr(), ""]);
-    st.pessoas.push({ ...nova, busca: norm(nome) + " " + norm(mat) });
+    await gravarNovaLinha("Pessoas", "J", [nova.id, nome, tipo, cpf ? "'" + cpf : "", tel ? "'" + tel : "", email ? "'" + email : "", mat ? "'" + mat : "", true, hojeStr(), ""]);
+    st.pessoas.push({ ...nova, busca: norm(nome) + " " + norm(mat) + " " + email });
     fecharForm();
     st.sel = st.pessoas[st.pessoas.length - 1];
     st.pago = true; st.forma = "Pix";
@@ -366,7 +373,7 @@ async function receber(id, forma) {
 function abrirForm() {
   const q = $("busca").value.trim();
   $("formNovo").reset(); $("formErro").textContent = "";
-  if (q && !/\d{3}/.test(q)) $("fNome").value = q; else if (digitos(q).length === 11) $("fCpf").value = digitos(q);
+  if (q.includes("@")) $("fEmail").value = q; else if (q && !/\d{3}/.test(q)) $("fNome").value = q; else if (digitos(q).length >= 10) $("fTel").value = q;
   st.tipoNovo = "Visitante"; st.sel = null;
   $("formNovo").hidden = false; $("buscaBox").hidden = true; render(); $("fNome").focus();
 }
@@ -378,6 +385,9 @@ function render() {
   document.querySelectorAll("#segTurno button").forEach(b => b.setAttribute("aria-pressed", b.dataset.turno === st.turno));
   document.querySelectorAll("#segTipo button").forEach(b => b.setAttribute("aria-pressed", b.dataset.tipo === st.tipoNovo));
   $("boxMat").hidden = st.tipoNovo !== "Aluno";
+  $("boxCpf").hidden = st.tipoNovo !== "Aluno";
+  $("lEmail").textContent = st.tipoNovo === "Aluno" ? "E-mail" : "E-mail *";
+  $("lTel").textContent = st.tipoNovo === "Aluno" ? "Telefone" : "Telefone *";
   $("formTitulo").textContent = st.tipoNovo === "Aluno" ? "Cadastrar aluno" : "Cadastrar visitante";
   $("btnSalvarPessoa").disabled = st.ocupado || !st.mcp;
   renderSel(); renderResultados(); renderHoje();
@@ -428,7 +438,7 @@ function renderResultados() {
   if (!st.carregado) { box.innerHTML = `<div class="empty">${st.mcp ? "Carregando a planilha…" : "Esperando conexão com a planilha…"}</div>`; return; }
   const q = norm($("busca").value), qd = digitos(q);
   if (!q) {
-    box.innerHTML = `<div class="empty">Digite o nome, a matrícula ou o CPF.<br>${st.pessoas.length} pessoas cadastradas.</div>`;
+    box.innerHTML = `<div class="empty">Digite o nome, a matrícula, o CPF ou o e-mail.<br>${st.pessoas.length} pessoas cadastradas.</div>`;
     return;
   }
   const partes = q.split(" ").filter(Boolean);
@@ -443,7 +453,7 @@ function renderResultados() {
     const dup = jaEntrou(p.id, st.turno);
     return `<button class="row" type="button" data-id="${esc(p.id)}">
       <div class="who"><div class="name">${esc(p.nome)}</div>
-      <div class="meta">${[p.mat && "Mat. " + esc(p.mat), p.cpf && "CPF •••" + p.cpf.slice(-4)].filter(Boolean).join(" · ") || "&nbsp;"}</div></div>
+      <div class="meta">${[p.mat && "Mat. " + esc(p.mat), p.cpf && "CPF •••" + p.cpf.slice(-4), !p.mat && p.email && esc(p.email)].filter(Boolean).join(" · ") || "&nbsp;"}</div></div>
       ${dup ? `<span class="chip ok">Já entrou</span>` : `<span class="chip ${p.tipo === "Aluno" ? "aluno" : "visitante"}">${p.tipo}</span>`}
     </button>`;
   }).join("");

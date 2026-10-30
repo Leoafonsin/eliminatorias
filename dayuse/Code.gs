@@ -26,11 +26,11 @@ const ABAS = {
 };
 
 const CABECALHOS = {
-  Pessoas: ['ID', 'Nome', 'Tipo', 'CPF', 'Telefone', 'Matricula', 'Ativo', 'DataCadastro', 'Observacao'],
+  Pessoas: ['ID', 'Nome', 'Tipo', 'CPF', 'Telefone', 'Email', 'Matricula', 'Ativo', 'DataCadastro', 'Observacao'],
   Presencas: ['ID', 'Data', 'Turno', 'Pessoa', 'Nome', 'Tipo', 'Valor', 'Pago', 'FormaPagamento',
               'HoraEntrada', 'Observacao'],
   Precos: ['Chave', 'Turno', 'Tipo', 'Valor'],
-  Importar: ['Nome', 'CPF', 'Telefone', 'Matricula'],
+  Importar: ['Nome', 'CPF', 'Telefone', 'Matricula', 'Email'],
 };
 
 // Regras de preço do clube. Altere aqui ou direto na aba "Precos".
@@ -88,9 +88,9 @@ function configurarPrecos_(ss) {
 
 function configurarFormatos_(ss) {
   const pessoas = ss.getSheetByName(ABAS.PESSOAS);
-  pessoas.getRange('H2:H').setNumberFormat('dd/MM/yyyy');
   pessoas.getRange('D2:D').setNumberFormat('@'); // CPF como texto (mantém zeros à esquerda)
-  pessoas.getRange('F2:F').setNumberFormat('@'); // matrícula como texto
+  pessoas.getRange('E2:G2000').setNumberFormat('@'); // telefone, e-mail e matrícula como texto
+  pessoas.getRange('I2:I').setNumberFormat('dd/MM/yyyy');
 
   const pres = ss.getSheetByName(ABAS.PRESENCAS);
   pres.getRange('B2:B').setNumberFormat('dd/MM/yyyy');
@@ -144,7 +144,7 @@ function configurarResumo_(ss) {
 }
 
 /**
- * Lê a aba "Importar" (Nome, CPF, Telefone, Matricula) e cadastra como Aluno
+ * Lê a aba "Importar" (Nome, CPF, Telefone, Matricula, Email) e cadastra como Aluno
  * na aba Pessoas, ignorando quem já existe (mesmo CPF ou mesma matrícula).
  * O nome só é usado para comparar quando a linha não tem CPF nem matrícula.
  */
@@ -155,19 +155,19 @@ function importarAlunos() {
   if (!imp || !pessoas) throw new Error('Rode "Configurar planilha" primeiro.');
 
   const existentes = pessoas.getLastRow() > 1
-    ? pessoas.getRange(2, 1, pessoas.getLastRow() - 1, 6).getValues()
+    ? pessoas.getRange(2, 1, pessoas.getLastRow() - 1, 7).getValues()
     : [];
   const cpfs = new Set(existentes.map(r => limparCpf_(r[3])).filter(String));
-  const matriculas = new Set(existentes.map(r => limparMatricula_(r[5])).filter(String));
+  const matriculas = new Set(existentes.map(r => limparMatricula_(r[6])).filter(String));
   const nomes = new Set(existentes.map(r => normalizar_(r[1])));
 
-  const dados = imp.getLastRow() > 1 ? imp.getRange(2, 1, imp.getLastRow() - 1, 4).getValues() : [];
+  const dados = imp.getLastRow() > 1 ? imp.getRange(2, 1, imp.getLastRow() - 1, 5).getValues() : [];
   const hoje = new Date();
   const novos = [];
   const avisos = [];
   let ignorados = 0;
 
-  dados.forEach(([nome, cpf, tel, matricula]) => {
+  dados.forEach(([nome, cpf, tel, matricula, email]) => {
     nome = String(nome).trim();
     if (!nome) return;
     const cpfLimpo = limparCpf_(cpf);
@@ -180,13 +180,13 @@ function importarAlunos() {
     if (cpfLimpo) cpfs.add(cpfLimpo);
     if (mat) matriculas.add(mat);
     nomes.add(chaveNome);
-    novos.push([gerarId_(), nome, 'Aluno', cpfLimpo, String(tel).trim(), mat,
+    novos.push([gerarId_(), nome, 'Aluno', cpfLimpo, String(tel).trim(), String(email || '').trim().toLowerCase(), mat,
                 true, hoje, '']);
   });
 
   if (novos.length) {
     pessoas.getRange(pessoas.getLastRow() + 1, 1, novos.length, novos[0].length).setValues(novos);
-    imp.getRange(2, 1, imp.getLastRow() - 1, 4).clearContent();
+    imp.getRange(2, 1, imp.getLastRow() - 1, 5).clearContent();
   }
   let msg = `${novos.length} aluno(s) importado(s). ${ignorados} já existiam e foram ignorados.`;
   if (avisos.length) msg += '\n\nConfira estes CPFs:\n' + avisos.slice(0, 20).join('\n');
