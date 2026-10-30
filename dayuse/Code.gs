@@ -28,7 +28,7 @@ const ABAS = {
 const CABECALHOS = {
   Pessoas: ['ID', 'Nome', 'Tipo', 'CPF', 'Telefone', 'Matricula', 'Ativo', 'DataCadastro', 'Observacao'],
   Presencas: ['ID', 'Data', 'Turno', 'Pessoa', 'Nome', 'Tipo', 'Valor', 'Pago', 'FormaPagamento',
-              'HoraEntrada', 'RegistradoPor', 'Observacao'],
+              'HoraEntrada', 'Observacao'],
   Precos: ['Chave', 'Turno', 'Tipo', 'Valor'],
   Importar: ['Nome', 'CPF', 'Telefone', 'Matricula'],
 };
@@ -90,6 +90,7 @@ function configurarFormatos_(ss) {
   const pessoas = ss.getSheetByName(ABAS.PESSOAS);
   pessoas.getRange('H2:H').setNumberFormat('dd/MM/yyyy');
   pessoas.getRange('D2:D').setNumberFormat('@'); // CPF como texto (mantém zeros à esquerda)
+  pessoas.getRange('F2:F').setNumberFormat('@'); // matrícula como texto
 
   const pres = ss.getSheetByName(ABAS.PRESENCAS);
   pres.getRange('B2:B').setNumberFormat('dd/MM/yyyy');
@@ -97,6 +98,7 @@ function configurarFormatos_(ss) {
   pres.getRange('J2:J').setNumberFormat('HH:mm');
 
   ss.getSheetByName(ABAS.IMPORTAR).getRange('B2:B').setNumberFormat('@');
+  ss.getSheetByName(ABAS.IMPORTAR).getRange('D2:D').setNumberFormat('@');
 }
 
 /** Painel com contagem e valores do dia escolhido em B2. */
@@ -143,7 +145,8 @@ function configurarResumo_(ss) {
 
 /**
  * Lê a aba "Importar" (Nome, CPF, Telefone, Matricula) e cadastra como Aluno
- * na aba Pessoas, ignorando quem já existe (mesmo CPF ou mesmo nome).
+ * na aba Pessoas, ignorando quem já existe (mesmo CPF ou mesma matrícula).
+ * O nome só é usado para comparar quando a linha não tem CPF nem matrícula.
  */
 function importarAlunos() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -152,25 +155,32 @@ function importarAlunos() {
   if (!imp || !pessoas) throw new Error('Rode "Configurar planilha" primeiro.');
 
   const existentes = pessoas.getLastRow() > 1
-    ? pessoas.getRange(2, 1, pessoas.getLastRow() - 1, 4).getValues()
+    ? pessoas.getRange(2, 1, pessoas.getLastRow() - 1, 6).getValues()
     : [];
   const cpfs = new Set(existentes.map(r => limparCpf_(r[3])).filter(String));
+  const matriculas = new Set(existentes.map(r => limparMatricula_(r[5])).filter(String));
   const nomes = new Set(existentes.map(r => normalizar_(r[1])));
 
   const dados = imp.getLastRow() > 1 ? imp.getRange(2, 1, imp.getLastRow() - 1, 4).getValues() : [];
   const hoje = new Date();
   const novos = [];
+  const avisos = [];
   let ignorados = 0;
 
   dados.forEach(([nome, cpf, tel, matricula]) => {
     nome = String(nome).trim();
     if (!nome) return;
     const cpfLimpo = limparCpf_(cpf);
+    const mat = limparMatricula_(matricula);
     const chaveNome = normalizar_(nome);
-    if ((cpfLimpo && cpfs.has(cpfLimpo)) || nomes.has(chaveNome)) { ignorados++; return; }
-    cpfs.add(cpfLimpo);
+    const repetido = (cpfLimpo && cpfs.has(cpfLimpo)) || (mat && matriculas.has(mat)) ||
+                     (!cpfLimpo && !mat && nomes.has(chaveNome));
+    if (repetido) { ignorados++; return; }
+    if (cpfLimpo && cpfLimpo.length !== 11) avisos.push(`${nome}: CPF com ${cpfLimpo.length} dígitos`);
+    if (cpfLimpo) cpfs.add(cpfLimpo);
+    if (mat) matriculas.add(mat);
     nomes.add(chaveNome);
-    novos.push([gerarId_(), nome, 'Aluno', cpfLimpo, String(tel).trim(), String(matricula).trim(),
+    novos.push([gerarId_(), nome, 'Aluno', cpfLimpo, String(tel).trim(), mat,
                 true, hoje, '']);
   });
 
@@ -178,7 +188,9 @@ function importarAlunos() {
     pessoas.getRange(pessoas.getLastRow() + 1, 1, novos.length, novos[0].length).setValues(novos);
     imp.getRange(2, 1, imp.getLastRow() - 1, 4).clearContent();
   }
-  SpreadsheetApp.getUi().alert(`${novos.length} aluno(s) importado(s). ${ignorados} já existiam e foram ignorados.`);
+  let msg = `${novos.length} aluno(s) importado(s). ${ignorados} já existiam e foram ignorados.`;
+  if (avisos.length) msg += '\n\nConfira estes CPFs:\n' + avisos.slice(0, 20).join('\n');
+  SpreadsheetApp.getUi().alert(msg);
 }
 
 function resumoHoje() {
@@ -224,7 +236,13 @@ function gerarId_() {
 }
 
 function limparCpf_(cpf) {
-  return String(cpf || '').replace(/\D/g, '');
+  const digitos = String(cpf || '').replace(/\D/g, '');
+  // CPF colado como número perde os zeros à esquerda (ex.: 01234567890 -> 1234567890)
+  return digitos.length >= 9 && digitos.length < 11 ? digitos.padStart(11, '0') : digitos;
+}
+
+function limparMatricula_(mat) {
+  return String(mat || '').trim().toUpperCase();
 }
 
 function normalizar_(texto) {

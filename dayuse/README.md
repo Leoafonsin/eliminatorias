@@ -34,9 +34,12 @@ Os valores ficam na aba **Precos** da planilha. Se o preço mudar, basta editar 
 ## Passo 2 – Trazer a base de alunos
 
 1. Na aba **Importar**, cole os alunos nas colunas `Nome | CPF | Telefone | Matricula`
-   (só o Nome é obrigatório).
+   (só o Nome é obrigatório, mas com CPF e matrícula a busca e o controle de repetidos ficam muito melhores).
 2. Menu **Day Use > Importar alunos**. O script cadastra todos como `Aluno` e ignora repetidos
-   (mesmo CPF ou mesmo nome).
+   (mesmo CPF **ou** mesma matrícula — o nome só é comparado quando a linha não tem nenhum dos dois).
+   - CPF pode vir com ou sem pontuação; o script guarda só os números.
+   - Se o CPF perdeu o zero da frente (comum quando vem do Excel como número), o script completa.
+   - No final aparece um aviso listando CPFs com quantidade errada de dígitos, para você conferir.
 
 ## Passo 3 – Criar o app no AppSheet
 
@@ -49,14 +52,34 @@ Os valores ficam na aba **Precos** da planilha. Se o preço mudar, basta editar 
 | Coluna | Tipo | Configuração |
 |--------|------|--------------|
 | ID | Text | **Key**. Initial value: `UNIQUEID()`. Desmarcar *Show*. |
-| Nome | Name | **Label**. Required. |
+| Nome | Name | Required. |
 | Tipo | Enum | Valores: `Aluno`, `Visitante`. Initial value: `"Visitante"`. Required. |
-| CPF | Text | Valid if: `ISBLANK([_THIS]) OR NOT(IN([_THIS], SELECT(Pessoas[CPF], [ID] <> [_THISROW].[ID])))` → evita CPF duplicado. |
+| CPF | Text | Valid if: ver fórmula abaixo (11 dígitos e sem duplicar). |
 | Telefone | Phone | |
-| Matricula | Text | Show if: `[Tipo] = "Aluno"` |
+| Matricula | Text | Show if: `[Tipo] = "Aluno"`. Required if: `[Tipo] = "Aluno"`. Valid if: `NOT(IN([_THIS], SELECT(Pessoas[Matricula], [ID] <> [_THISROW].[ID])))` |
 | Ativo | Yes/No | Initial value: `TRUE` |
 | DataCadastro | Date | Initial value: `TODAY()`. Editable: desmarcado. |
 | Observacao | LongText | |
+| **Busca** (virtual) | Text | Clique em **Add virtual column**. App formula: `CONCATENATE([Nome], " • Mat. ", [Matricula], " • CPF ", [CPF])`. Marque como **Label**. |
+
+**Por que a coluna `Busca`?** O campo de seleção de pessoa no registro de presença pesquisa pelo *Label*.
+Com essa coluna como Label, você acha o aluno digitando **nome, matrícula ou CPF** — e ainda
+diferencia dois alunos com o mesmo nome.
+
+**Valid if da coluna `CPF`:**
+
+```
+OR(
+  ISBLANK([_THIS]),
+  AND(
+    LEN([_THIS]) = 11,
+    NOT(IN([_THIS], SELECT(Pessoas[CPF], [ID] <> [_THISROW].[ID])))
+  )
+)
+```
+
+Invalid value error: `CPF deve ter 11 números e não pode estar cadastrado em outra pessoa.`
+(Digite o CPF só com números. Para visitante o CPF é opcional — se quiser obrigar, troque `ISBLANK([_THIS])` por `FALSE`.)
 
 ### 3.2 Tabela `Presencas`
 
@@ -72,7 +95,6 @@ Os valores ficam na aba **Precos** da planilha. Se o preço mudar, basta editar 
 | Pago | Yes/No | Initial value: `[Valor] = 0` |
 | FormaPagamento | Enum | Valores: `Pix`, `Dinheiro`, `Cartão`, `Isento`. Initial value: `IF([Valor] = 0, "Isento", "")`. Show if: `[Valor] > 0` (ou deixe sempre visível). Required if: `[Pago]` |
 | HoraEntrada | Time | Initial value: `TIMENOW()` |
-| RegistradoPor | Email | Initial value: `USEREMAIL()`. Editable: desmarcado. |
 | Observacao | LongText | |
 
 > Na fórmula do `Valor`, use `"|"` (sem a barra invertida — ela só aparece aqui por causa da tabela em Markdown).
@@ -105,7 +127,7 @@ Em **Invalid value error** coloque: `Essa pessoa já foi registrada neste turno 
 |------|----------------|------|------------|
 | **Registrar entrada** | Presencas | Form | Coloque como primeira tela (posição *primary*). Ordem dos campos: Pessoa, Turno, Pago, FormaPagamento. |
 | **Hoje** | slice `PresencasHoje` | Table / Deck | Agrupar por `Turno`. Mostra quem já entrou hoje. |
-| **Pessoas** | Pessoas | Deck | Busca por nome/CPF. Botão **+** cadastra visitante novo. |
+| **Pessoas** | Pessoas | Deck | Busca por nome, matrícula ou CPF. Botão **+** cadastra visitante novo. |
 | **Pendentes** | slice `PendentesPagamento` | Table | Quem ainda não pagou. |
 | **Histórico** | Presencas | Table | Agrupar por `Data`, ordenar desc. |
 
@@ -136,6 +158,13 @@ Behavior > Actions > nova ação na tabela `Presencas`:
 Assim, na tela **Pendentes**, é só tocar no botão para dar baixa.
 
 ---
+
+## Uso por uma pessoa só
+
+Como só você vai registrar, o app pode ficar no modo **protótipo** do AppSheet (sem publicar),
+que já funciona normalmente no celular para o dono do app — não precisa configurar usuários nem permissões.
+Instale o app **AppSheet** no celular, entre com a mesma conta Google da planilha e o app aparece lá.
+Ele funciona até sem internet: os registros ficam guardados e sincronizam quando a conexão voltar.
 
 ## Fluxo no dia a dia
 
