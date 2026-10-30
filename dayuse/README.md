@@ -24,6 +24,17 @@ Os valores ficam na aba **Precos** da planilha. Se o preço mudar, basta editar 
 
 ---
 
+## Atalho – planilha já pronta
+
+O arquivo [`DayUse.xlsx`](DayUse.xlsx) já vem com todas as abas, preços, listas e o Resumo com fórmulas.
+
+1. Abra o [Google Drive](https://drive.google.com) > **Novo > Upload de arquivo** > escolha `DayUse.xlsx`.
+2. Clique com o botão direito no arquivo > **Abrir com > Planilhas Google**.
+3. **Arquivo > Salvar como Planilhas Google** (o AppSheet só lê planilhas Google, não `.xlsx`).
+4. Cole seus alunos na aba **Pessoas** *ou*, melhor, gere a planilha já com os alunos
+   (`python dayuse/gerar_planilha.py alunos.xlsx`) — cada aluno precisa de um `ID` único.
+5. Pule para o **Passo 3**. (O script `Code.gs` continua opcional, para ter o menu de importação e o fechamento do dia.)
+
 ## Passo 1 – Criar a planilha com o script
 
 1. Crie uma planilha nova no Google Sheets (ex.: "Day Use Clube").
