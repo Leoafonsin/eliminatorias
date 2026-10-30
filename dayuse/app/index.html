@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day Use do Clube</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: uma coluna estreita de app de celular; abas no topo, ação principal sempre visível. */
+:root {
+  --bg: #eef3f4;
+  --surface: #ffffff;
+  --ink: #12282d;
+  --muted: #5b7176;
+  --line: #d3dfe1;
+  --accent: #0b6e7f;
+  --accent-ink: #ffffff;
+  --accent-soft: #d6ecef;
+  --ok: #1f7a43;
+  --ok-soft: #dcf1e3;
+  --warn: #9a5b00;
+  --warn-soft: #fbecd2;
+  --bad: #b3261e;
+  --bad-soft: #f9dedc;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1a1d; --surface: #152629; --ink: #e4eff1; --muted: #93abb0; --line: #263d42;
+    --accent: #3fb3c6; --accent-ink: #062126; --accent-soft: #173a40;
+    --ok: #6fd295; --ok-soft: #173826; --warn: #f0b45a; --warn-soft: #3a2a10;
+    --bad: #ff8a80; --bad-soft: #3d1a18; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1a1d; --surface: #152629; --ink: #e4eff1; --muted: #93abb0; --line: #263d42;
+  --accent: #3fb3c6; --accent-ink: #062126; --accent-soft: #173a40;
+  --ok: #6fd295; --ok-soft: #173826; --warn: #f0b45a; --warn-soft: #3a2a10;
+  --bad: #ff8a80; --bad-soft: #3d1a18; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.4 var(--body); }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.app { max-width: 560px; margin: 0 auto; padding: 12px 16px 120px; display: flex; flex-direction: column; gap: 14px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+h1 { font: 700 28px/1 var(--display); letter-spacing: .02em; margin: 0; text-transform: uppercase; }
+.date { color: var(--muted); font-size: 14px; }
+.sync { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.icon-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px 12px; font-weight: 600; }
+
+.tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; gap: 4px; }
+.tabs button { border: 0; background: transparent; padding: 10px; border-radius: 9px; font: 700 18px var(--display); text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+
+.label { font: 700 14px var(--display); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 6px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg button { border: 2px solid var(--line); background: var(--surface); border-radius: 12px; padding: 12px 8px; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+.seg button b { font: 700 22px/1 var(--display); text-transform: uppercase; }
+.seg button span { font-size: 13px; color: var(--muted); }
+.seg button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+
+.search { display: flex; gap: 8px; }
+.search input { flex: 1; min-width: 0; border: 2px solid var(--line); background: var(--surface); border-radius: 12px; padding: 12px 14px; font-size: 17px; }
+.search input:focus { border-color: var(--accent); outline: none; }
+.btn { border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 600; background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: var(--surface); color: var(--accent); border: 2px solid var(--accent); }
+.btn.big { width: 100%; padding: 16px; font: 700 22px var(--display); text-transform: uppercase; letter-spacing: .04em; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.list { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 0; border-top: 1px solid var(--line); background: transparent; text-align: left; width: 100%; }
+.row:first-child { border-top: 0; }
+button.row:hover { background: var(--accent-soft); }
+.row .who { flex: 1; min-width: 0; }
+.row .name { font-weight: 600; overflow-wrap: anywhere; }
+.row .meta { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chip { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.chip.aluno { background: var(--accent-soft); color: var(--accent); }
+.chip.visitante { background: var(--warn-soft); color: var(--warn); }
+.chip.ok { background: var(--ok-soft); color: var(--ok); }
+.chip.pend { background: var(--bad-soft); color: var(--bad); }
+.empty { padding: 18px 14px; color: var(--muted); text-align: center; }
+
+.card { background: var(--surface); border: 2px solid var(--accent); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.card-head .name { font: 700 26px/1.05 var(--display); text-transform: uppercase; overflow-wrap: anywhere; }
+.price { text-align: right; }
+.price b { display: block; font: 700 32px/1 var(--display); font-variant-numeric: tabular-nums; }
+.price small { color: var(--muted); font-size: 13px; }
+.price.free b { color: var(--ok); }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opts button { border: 2px solid var(--line); background: var(--surface); border-radius: 99px; padding: 8px 16px; font-weight: 600; }
+.opts button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.link { background: none; border: 0; color: var(--muted); text-decoration: underline; padding: 4px; font-size: 14px; }
+
+form.card { border-color: var(--line); }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-weight: 600; font-size: 14px; }
+.field input { border: 2px solid var(--line); background: var(--bg); border-radius: 10px; padding: 11px 12px; font-size: 16px; }
+.field input:focus { border-color: var(--accent); outline: none; }
+.hint { font-size: 13px; color: var(--muted); }
+
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.tile b { display: block; font: 700 26px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.tile span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.tile.pend b { color: var(--bad); }
+.tile.ok b { color: var(--ok); }
+.turno-sum { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.filter { display: flex; gap: 8px; }
+
+.banner { border-radius: 12px; padding: 12px 14px; font-size: 15px; }
+.banner.err { background: var(--bad-soft); color: var(--bad); }
+.banner.info { background: var(--accent-soft); color: var(--ink); }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 12px 18px; border-radius: 12px; font-weight: 600; max-width: calc(100% - 32px); box-shadow: 0 6px 24px rgba(0,0,0,.25); z-index: 10; }
+.toast.err { background: var(--bad); color: #fff; }
+[hidden] { display: none !important; }
+@media (max-width: 400px) { .tiles b { font-size: 22px; } .seg button b { font-size: 19px; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>Day Use</h1>
+      <div class="date" id="hoje"></div>
+    </div>
+    <div class="sync">
+      <span id="status">Conectando…</span>
+      <button class="icon-btn" id="btnReload" type="button">Atualizar</button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner info" hidden></div>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tabReg" aria-selected="true" type="button">Registrar entrada</button>
+    <button role="tab" id="tabHoje" aria-selected="false" type="button">Hoje</button>
+  </nav>
+
+  <!-- REGISTRAR -->
+  <section id="viewReg" style="display:flex;flex-direction:column;gap:14px">
+    <div>
+      <p class="label">Período</p>
+      <div class="seg" id="segTurno">
+        <button type="button" data-turno="Manhã" aria-pressed="false"><b>Manhã</b><span>Aluno isento · Visitante R$ 40</span></button>
+        <button type="button" data-turno="Tarde" aria-pressed="false"><b>Tarde</b><span>Aluno R$ 30 · Visitante R$ 40</span></button>
+      </div>
+    </div>
+
+    <div id="selCard" class="card" hidden></div>
+
+    <div id="buscaBox" style="display:flex;flex-direction:column;gap:10px">
+      <p class="label" style="margin:0">Quem está entrando?</p>
+      <div class="search">
+        <input id="busca" type="search" placeholder="Nome, matrícula ou CPF" autocomplete="off" aria-label="Buscar pessoa">
+        <button class="btn ghost" id="btnNovo" type="button">+ Visitante</button>
+      </div>
+      <div class="list" id="resultados"></div>
+    </div>
+
+    <form id="formNovo" class="card" hidden novalidate>
+      <div class="card-head"><div class="name" id="formTitulo">Cadastrar visitante</div></div>
+      <div class="opts" id="segTipo">
+        <button type="button" data-tipo="Visitante" aria-pressed="true">Visitante</button>
+        <button type="button" data-tipo="Aluno" aria-pressed="false">Aluno</button>
+      </div>
+      <div class="field"><label for="fNome">Nome completo *</label><input id="fNome" autocomplete="off"></div>
+      <div class="field"><label for="fCpf">CPF</label><input id="fCpf" inputmode="numeric" autocomplete="off" placeholder="Só números"></div>
+      <div class="field"><label for="fTel">Telefone</label><input id="fTel" inputmode="tel" autocomplete="off"></div>
+      <div class="field" id="boxMat" hidden><label for="fMat">Matrícula *</label><input id="fMat" autocomplete="off"></div>
+      <div class="hint" id="formErro" style="color:var(--bad)"></div>
+      <button class="btn big" id="btnSalvarPessoa" type="submit">Salvar e selecionar</button>
+      <button class="link" id="btnCancelarNovo" type="button">Cancelar</button>
+    </form>
+  </section>
+
+  <!-- HOJE -->
+  <section id="viewHoje" hidden style="flex-direction:column;gap:14px">
+    <div class="tiles">
+      <div class="tile"><b id="tPessoas">0</b><span>Pessoas</span></div>
+      <div class="tile ok"><b id="tRecebido">R$ 0</b><span>Recebido</span></div>
+      <div class="tile pend"><b id="tPendente">R$ 0</b><span>A receber</span></div>
+    </div>
+    <div class="turno-sum" id="porTurno"></div>
+    <div class="filter opts" id="filtro">
+      <button type="button" data-f="Todos" aria-pressed="true">Todos</button>
+      <button type="button" data-f="Manhã" aria-pressed="false">Manhã</button>
+      <button type="button" data-f="Tarde" aria-pressed="false">Tarde</button>
+      <button type="button" data-f="Pendentes" aria-pressed="false">A receber</button>
+    </div>
+    <div class="list" id="listaHoje"></div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const PLANILHA = "1iWGl2f78rU7Qcl6zU9DmEepTGMEShq8sKp1-Twm-gtU";
+const SHEETS = "Google Sheets";
+const PRECO_PADRAO = { "Manhã|Aluno": 0, "Manhã|Visitante": 40, "Tarde|Aluno": 30, "Tarde|Visitante": 40 };
+
+const st = {
+  mcp: null, pessoas: [], presencas: [], precos: { ...PRECO_PADRAO },
+  turno: new Date().getHours() < 13 ? "Manhã" : "Tarde",
+  sel: null, pago: true, forma: "Pix", tipoNovo: "Visitante", filtro: "Todos",
+  receber: null, ocupado: false, carregado: false,
+};
+const $ = id => document.getElementById(id);
+
+// ---------- utilidades ----------
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const norm = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+const digitos = s => String(s ?? "").replace(/\D/g, "");
+const brl = v => v === 0 ? "Isento" : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const brlCurto = v => "R$ " + v.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
+const pad = n => String(n).padStart(2, "0");
+const hojeStr = () => { const d = new Date(); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`; };
+const horaStr = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const uid = () => Array.from(crypto.getRandomValues(new Uint8Array(4)), b => b.toString(16).padStart(2, "0")).join("");
+const dinheiro = v => { if (typeof v === "number") return v; const t = String(v ?? "").replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."); const n = parseFloat(t); return isNaN(n) ? 0 : n; };
+const verdadeiro = v => ["true", "verdadeiro", "sim", "1", "x"].includes(norm(v));
+function normData(v) {
+  const s = String(v ?? "").trim(); const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return `${pad(m[1])}/${pad(m[2])}/${m[3]}`;
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/); return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : s;
+}
+const valorPara = (p, turno) => st.precos[`${turno}|${p.tipo}`] ?? PRECO_PADRAO[`${turno}|${p.tipo}`] ?? 40;
+const jaEntrou = (pessoaId, turno) => st.presencas.find(x => x.pessoa === pessoaId && x.turno === turno && x.data === hojeStr());
+
+let toastTimer;
+function toast(msg, erro = false) {
+  const t = $("toast"); t.textContent = msg; t.className = "toast" + (erro ? " err" : ""); t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), erro ? 6000 : 3000);
+}
+function banner(msg, tipo = "info") { const b = $("banner"); if (!msg) { b.hidden = true; return; } b.className = "banner " + tipo; b.innerHTML = msg; b.hidden = false; }
+
+function explicarErro(e) {
+  switch (e?.code) {
+    case "needs_reauth": return "A conexão com o Google Sheets expirou. Reconecte em claude.ai → Configurações → Conectores e toque em Atualizar.";
+    case "server_not_connected": return "O Google Sheets não está conectado na sua conta. Adicione em claude.ai → Configurações → Conectores.";
+    case "selection_required": return "Você tem mais de um conector do Google Sheets. Escolha qual usar no aviso do Claude e toque em Atualizar.";
+    case "not_in_manifest": case "approval_required": case "consent_required": return "O app precisa da sua permissão para usar o Google Sheets. Toque em Atualizar e escolha Permitir.";
+    case "blocked_by_policy": return "Sua organização bloqueou o uso do Google Sheets aqui.";
+    case "server_unavailable": case "rate_limited": return "O Google Sheets não respondeu agora. Espere alguns segundos e toque em Atualizar.";
+    case "tool_error": return "A planilha recusou a operação: " + esc(e.message || "erro desconhecido");
+    case "not_granted": case "capability_disabled": case "capability_removed": return "Este app só consegue acessar a planilha quando aberto pelo claude.ai, logado na sua conta.";
+    default: return "Não consegui falar com a planilha (" + esc(e?.code || e?.message || "erro") + "). Toque em Atualizar.";
+  }
+}
+
+// ---------- planilha ----------
+async function chamar(tool, input) {
+  const r = await st.mcp.callTool(SHEETS, tool, { spreadsheetId: PLANILHA, ...input }, { cache: false });
+  let p = r?.payload;
+  if (typeof p === "string") { try { p = JSON.parse(p); } catch { /* texto puro */ } }
+  return p ?? {};
+}
+async function ler(range) { const p = await chamar("get_values", { range }); return Array.isArray(p.values) ? p.values : []; }
+// Grava numa linha nova logo abaixo da última preenchida (lê a coluna A na hora para não sobrescrever nada).
+async function gravarNovaLinha(aba, ultimaCol, linha) {
+  const ids = await ler(`${aba}!A2:A`);
+  let n = ids.length; while (n > 0 && !(ids[n - 1] && ids[n - 1][0])) n--;
+  const row = n + 2;
+  await chamar("update_values", { range: `${aba}!A${row}:${ultimaCol}${row}`, values: [linha] });
+  return row;
+}
+
+async function carregar(silencioso = false) {
+  if (!st.mcp) return;
+  $("status").textContent = "Sincronizando…";
+  try {
+    const [pes, pre, prc] = await Promise.all([ler("Pessoas!A2:I"), ler("Presencas!A2:K"), ler("Precos!A2:D")]);
+    st.pessoas = pes.map((r, i) => ({ row: i + 2, id: r[0], nome: (r[1] || "").trim(), tipo: r[2] === "Aluno" ? "Aluno" : "Visitante", cpf: digitos(r[3]), tel: r[4] || "", mat: (r[5] || "").trim(), ativo: r[6] === undefined || r[6] === "" || verdadeiro(r[6]) }))
+      .filter(p => p.id && p.nome && p.ativo);
+    st.pessoas.forEach(p => { p.busca = norm(p.nome) + " " + norm(p.mat); });
+    st.presencas = pre.map((r, i) => ({ row: i + 2, id: r[0], data: normData(r[1]), turno: r[2], pessoa: r[3], nome: r[4], tipo: r[5], valor: dinheiro(r[6]), pago: verdadeiro(r[7]), forma: r[8] || "", hora: r[9] || "" }))
+      .filter(x => x.id);
+    st.precos = { ...PRECO_PADRAO };
+    prc.forEach(r => { if (r[1] && r[2] && r[3] !== undefined) st.precos[`${r[1]}|${r[2]}`] = dinheiro(r[3]); });
+    st.carregado = true;
+    banner("");
+    const n = st.pessoas.length;
+    $("status").textContent = `${n} ${n === 1 ? "pessoa" : "pessoas"} · ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    if (st.sel) st.sel = st.pessoas.find(p => p.id === st.sel.id) || null;
+  } catch (e) {
+    $("status").textContent = "Sem conexão";
+    if (!silencioso || !st.carregado) banner(explicarErro(e), "err"); else toast("Não consegui atualizar agora.", true);
+  }
+  render();
+}
+
+// ---------- ações ----------
+async function registrar() {
+  const p = st.sel; if (!p || st.ocupado) return;
+  if (jaEntrou(p.id, st.turno)) { toast(`${p.nome} já entrou na ${st.turno.toLowerCase()} de hoje.`, true); return; }
+  const valor = valorPara(p, st.turno);
+  const pago = valor === 0 ? true : st.pago;
+  const forma = valor === 0 ? "Isento" : (pago ? st.forma : "");
+  st.ocupado = true; render();
+  try {
+    await gravarNovaLinha("Presencas", "K", [uid(), hojeStr(), st.turno, p.id, p.nome, p.tipo, valor, pago, forma, horaStr(), ""]);
+    toast(`Entrada registrada: ${p.nome}${valor === 0 ? " (isento)" : pago ? ` · ${brl(valor)} no ${forma}` : " · a receber"}`);
+    st.sel = null; $("busca").value = "";
+    await carregar(true);
+  } catch (e) {
+    toast(e?.code === "server_unavailable" || e?.code === "upstream_error"
+      ? "A planilha demorou a responder. Toque em Atualizar e confira na aba Hoje antes de registrar de novo."
+      : explicarErro(e).replace(/<[^>]+>/g, ""), true);
+  } finally { st.ocupado = false; render(); $("busca").focus(); }
+}
+
+async function salvarPessoa(ev) {
+  ev.preventDefault(); if (st.ocupado) return;
+  const nome = $("fNome").value.trim().replace(/\s+/g, " ");
+  const cpf = digitos($("fCpf").value);
+  const tel = $("fTel").value.trim();
+  const mat = $("fMat").value.trim().toUpperCase();
+  const tipo = st.tipoNovo;
+  const erro = msg => { $("formErro").textContent = msg; };
+  if (nome.length < 3) return erro("Digite o nome completo.");
+  if (cpf && cpf.length !== 11) return erro("O CPF precisa ter 11 números.");
+  if (cpf) { const d = st.pessoas.find(x => x.cpf === cpf); if (d) return erro(`Esse CPF já está cadastrado para ${d.nome}.`); }
+  if (tipo === "Aluno" && !mat) return erro("Aluno precisa de matrícula.");
+  if (mat) { const d = st.pessoas.find(x => x.mat.toUpperCase() === mat); if (d) return erro(`Essa matrícula já é de ${d.nome}.`); }
+  erro("");
+  const nova = { id: uid(), nome, tipo, cpf, tel, mat, ativo: true };
+  st.ocupado = true; render();
+  try {
+    await gravarNovaLinha("Pessoas", "I", [nova.id, nome, tipo, cpf ? "'" + cpf : "", tel ? "'" + tel : "", mat ? "'" + mat : "", true, hojeStr(), ""]);
+    st.pessoas.push({ ...nova, busca: norm(nome) + " " + norm(mat) });
+    fecharForm();
+    st.sel = st.pessoas[st.pessoas.length - 1];
+    st.pago = true; st.forma = "Pix";
+    toast(`${tipo} cadastrado: ${nome}`);
+    carregar(true);
+  } catch (e) {
+    erro(e?.code === "server_unavailable" || e?.code === "upstream_error"
+      ? "A planilha demorou a responder. Toque em Atualizar e procure o nome antes de cadastrar de novo."
+      : explicarErro(e).replace(/<[^>]+>/g, ""));
+  } finally { st.ocupado = false; render(); }
+}
+
+async function receber(id, forma) {
+  const x = st.presencas.find(p => p.id === id); if (!x || st.ocupado) return;
+  st.ocupado = true; render();
+  try {
+    const conf = await ler(`Presencas!A${x.row}:A${x.row}`);
+    if (!conf[0] || conf[0][0] !== id) { toast("A planilha mudou. Atualizei a lista, tente de novo.", true); await carregar(true); return; }
+    await chamar("update_values", { range: `Presencas!H${x.row}:I${x.row}`, values: [[true, forma]] });
+    toast(`${x.nome}: ${brl(x.valor)} recebido no ${forma}`);
+    st.receber = null;
+    await carregar(true);
+  } catch (e) { toast(explicarErro(e).replace(/<[^>]+>/g, ""), true); }
+  finally { st.ocupado = false; render(); }
+}
+
+function abrirForm() {
+  const q = $("busca").value.trim();
+  $("formNovo").reset(); $("formErro").textContent = "";
+  if (q && !/\d{3}/.test(q)) $("fNome").value = q; else if (digitos(q).length === 11) $("fCpf").value = digitos(q);
+  st.tipoNovo = "Visitante"; st.sel = null;
+  $("formNovo").hidden = false; $("buscaBox").hidden = true; render(); $("fNome").focus();
+}
+function fecharForm() { $("formNovo").hidden = true; $("buscaBox").hidden = false; }
+
+// ---------- telas ----------
+function render() {
+  $("hoje").textContent = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+  document.querySelectorAll("#segTurno button").forEach(b => b.setAttribute("aria-pressed", b.dataset.turno === st.turno));
+  document.querySelectorAll("#segTipo button").forEach(b => b.setAttribute("aria-pressed", b.dataset.tipo === st.tipoNovo));
+  $("boxMat").hidden = st.tipoNovo !== "Aluno";
+  $("formTitulo").textContent = st.tipoNovo === "Aluno" ? "Cadastrar aluno" : "Cadastrar visitante";
+  $("btnSalvarPessoa").disabled = st.ocupado || !st.mcp;
+  renderSel(); renderResultados(); renderHoje();
+}
+
+function renderSel() {
+  const c = $("selCard"), p = st.sel;
+  if (!p) { c.hidden = true; return; }
+  const valor = valorPara(p, st.turno), dup = jaEntrou(p.id, st.turno);
+  c.hidden = false;
+  c.innerHTML = `
+    <div class="card-head">
+      <div>
+        <div class="name">${esc(p.nome)}</div>
+        <div class="meta" style="margin-top:6px">
+          <span class="chip ${p.tipo === "Aluno" ? "aluno" : "visitante"}">${p.tipo}</span>
+          ${p.mat ? `<span class="hint"> Mat. ${esc(p.mat)}</span>` : ""}
+        </div>
+      </div>
+      <div class="price ${valor === 0 ? "free" : ""}"><b>${brl(valor)}</b><small>${st.turno}</small></div>
+    </div>
+    ${dup ? `<div class="banner err">Já entrou na ${st.turno.toLowerCase()} de hoje, às ${esc(dup.hora || "—")}.</div>` : ""}
+    ${valor === 0 ? `<div class="hint">Aluno no day use da manhã não paga.</div>` : `
+      <div>
+        <p class="label">Pagamento</p>
+        <div class="opts" id="optPago">
+          <button type="button" data-pago="1" aria-pressed="${st.pago}">Pagou agora</button>
+          <button type="button" data-pago="0" aria-pressed="${!st.pago}">Vai pagar depois</button>
+        </div>
+      </div>
+      <div ${st.pago ? "" : "hidden"}>
+        <p class="label">Forma</p>
+        <div class="opts" id="optForma">
+          ${["Pix", "Dinheiro", "Cartão"].map(f => `<button type="button" data-forma="${f}" aria-pressed="${st.forma === f}">${f}</button>`).join("")}
+        </div>
+      </div>`}
+    <button class="btn big" id="btnConfirmar" type="button" ${st.ocupado || dup || !st.mcp ? "disabled" : ""}>${st.ocupado ? "Salvando…" : "Confirmar entrada"}</button>
+    <button class="link" id="btnTrocar" type="button">Trocar pessoa</button>`;
+  $("btnConfirmar").onclick = registrar;
+  $("btnTrocar").onclick = () => { st.sel = null; render(); $("busca").focus(); };
+  c.querySelectorAll("[data-pago]").forEach(b => b.onclick = () => { st.pago = b.dataset.pago === "1"; render(); });
+  c.querySelectorAll("[data-forma]").forEach(b => b.onclick = () => { st.forma = b.dataset.forma; render(); });
+}
+
+function renderResultados() {
+  const box = $("resultados");
+  $("buscaBox").style.display = st.sel || !$("formNovo").hidden ? "none" : "flex";
+  if (!st.carregado) { box.innerHTML = `<div class="empty">${st.mcp ? "Carregando a planilha…" : "Esperando conexão com a planilha…"}</div>`; return; }
+  const q = norm($("busca").value), qd = digitos(q);
+  if (!q) {
+    box.innerHTML = `<div class="empty">Digite o nome, a matrícula ou o CPF.<br>${st.pessoas.length} pessoas cadastradas.</div>`;
+    return;
+  }
+  const partes = q.split(" ").filter(Boolean);
+  const achados = st.pessoas.filter(p =>
+    partes.every(t => p.busca.includes(t)) || (qd.length >= 3 && p.cpf.includes(qd))
+  ).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")).slice(0, 40);
+  if (!achados.length) {
+    box.innerHTML = `<div class="empty">Ninguém encontrado com “${esc($("busca").value)}”.<br><button class="btn" id="btnNovoVazio" type="button" style="margin-top:10px">Cadastrar visitante</button></div>`;
+    $("btnNovoVazio").onclick = abrirForm; return;
+  }
+  box.innerHTML = achados.map(p => {
+    const dup = jaEntrou(p.id, st.turno);
+    return `<button class="row" type="button" data-id="${esc(p.id)}">
+      <div class="who"><div class="name">${esc(p.nome)}</div>
+      <div class="meta">${[p.mat && "Mat. " + esc(p.mat), p.cpf && "CPF •••" + p.cpf.slice(-4)].filter(Boolean).join(" · ") || "&nbsp;"}</div></div>
+      ${dup ? `<span class="chip ok">Já entrou</span>` : `<span class="chip ${p.tipo === "Aluno" ? "aluno" : "visitante"}">${p.tipo}</span>`}
+    </button>`;
+  }).join("");
+  box.querySelectorAll("[data-id]").forEach(b => b.onclick = () => {
+    st.sel = st.pessoas.find(p => p.id === b.dataset.id); st.pago = true; st.forma = "Pix"; render(); window.scrollTo({ top: 0 });
+  });
+}
+
+function renderHoje() {
+  const dia = st.presencas.filter(x => x.data === hojeStr());
+  const soma = arr => arr.reduce((s, x) => s + x.valor, 0);
+  const recebido = soma(dia.filter(x => x.pago)), pendente = soma(dia.filter(x => !x.pago));
+  $("tPessoas").textContent = dia.length;
+  $("tRecebido").textContent = brlCurto(recebido);
+  $("tPendente").textContent = brlCurto(pendente);
+  $("porTurno").innerHTML = ["Manhã", "Tarde"].map(t => {
+    const d = dia.filter(x => x.turno === t), al = d.filter(x => x.tipo === "Aluno").length;
+    const vi = d.length - al, pl = (n, s, p) => `${n} ${n === 1 ? s : p}`;
+    return `<b>${t}:</b> ${d.length} (${pl(al, "aluno", "alunos")}, ${pl(vi, "visitante", "visitantes")}) · ${brlCurto(soma(d))}`;
+  }).join("<br>");
+  document.querySelectorAll("#filtro button").forEach(b => b.setAttribute("aria-pressed", b.dataset.f === st.filtro));
+  let lista = dia;
+  if (st.filtro === "Pendentes") lista = dia.filter(x => !x.pago);
+  else if (st.filtro !== "Todos") lista = dia.filter(x => x.turno === st.filtro);
+  lista = [...lista].sort((a, b) => String(b.hora).localeCompare(String(a.hora)));
+  const box = $("listaHoje");
+  if (!st.carregado) { box.innerHTML = `<div class="empty">Carregando…</div>`; return; }
+  if (!lista.length) { box.innerHTML = `<div class="empty">${st.filtro === "Pendentes" ? "Ninguém devendo. Tudo recebido." : "Nenhuma entrada registrada ainda."}</div>`; return; }
+  box.innerHTML = lista.map(x => {
+    const status = x.valor === 0 ? `<span class="chip ok">Isento</span>` : x.pago ? `<span class="chip ok">${esc(x.forma || "Pago")}</span>` : `<span class="chip pend">A receber</span>`;
+    const abrindo = st.receber === x.id;
+    return `<div class="row" style="flex-wrap:wrap">
+      <div class="who"><div class="name">${esc(x.nome)}</div>
+      <div class="meta">${esc(x.hora)} · ${esc(x.turno)} · ${esc(x.tipo)} · ${x.valor ? brl(x.valor) : "R$ 0"}</div></div>
+      ${!x.pago && x.valor > 0 && !abrindo ? `<button class="btn" type="button" data-receber="${esc(x.id)}">Receber</button>` : status}
+      ${abrindo ? `<div class="opts" style="width:100%">${["Pix", "Dinheiro", "Cartão"].map(f => `<button type="button" data-rid="${esc(x.id)}" data-f="${f}" ${st.ocupado ? "disabled" : ""}>${f}</button>`).join("")}<button class="link" type="button" data-cancel="1">Cancelar</button></div>` : ""}
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-receber]").forEach(b => b.onclick = () => { st.receber = b.dataset.receber; render(); });
+  box.querySelectorAll("[data-rid]").forEach(b => b.onclick = () => receber(b.dataset.rid, b.dataset.f));
+  box.querySelectorAll("[data-cancel]").forEach(b => b.onclick = () => { st.receber = null; render(); });
+}
+
+function aba(qual) {
+  const reg = qual === "reg";
+  $("tabReg").setAttribute("aria-selected", reg); $("tabHoje").setAttribute("aria-selected", !reg);
+  $("viewReg").style.display = reg ? "flex" : "none";
+  $("viewHoje").hidden = reg; $("viewHoje").style.display = reg ? "none" : "flex";
+  render();
+}
+
+// ---------- eventos ----------
+$("tabReg").onclick = () => aba("reg");
+$("tabHoje").onclick = () => aba("hoje");
+$("btnReload").onclick = () => carregar();
+$("busca").addEventListener("input", renderResultados);
+$("btnNovo").onclick = abrirForm;
+$("btnCancelarNovo").onclick = () => { fecharForm(); render(); };
+$("formNovo").addEventListener("submit", salvarPessoa);
+document.querySelectorAll("#segTurno button").forEach(b => b.onclick = () => { st.turno = b.dataset.turno; render(); });
+document.querySelectorAll("#segTipo button").forEach(b => b.onclick = () => { st.tipoNovo = b.dataset.tipo; render(); });
+document.querySelectorAll("#filtro button").forEach(b => b.onclick = () => { st.filtro = b.dataset.f; st.receber = null; render(); });
+
+render();
+(async () => {
+  if (!window.claude || typeof window.claude.use !== "function") {
+    $("status").textContent = "Sem conexão";
+    banner("Abra este app pelo claude.ai (ou pelo app Claude no celular), logado na sua conta, para ele acessar a planilha.", "err");
+    return;
+  }
+  st.mcp = await window.claude.use("mcp").catch(() => null);
+  if (!st.mcp) {
+    $("status").textContent = "Sem conexão";
+    banner("Este app só consegue acessar a planilha quando aberto pelo claude.ai, logado na sua conta, com o conector Google Sheets ligado.", "err");
+    render(); return;
+  }
+  await carregar();
+})();
+</script>
+</body>
+</html>
