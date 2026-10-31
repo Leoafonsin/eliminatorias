@@ -137,6 +137,8 @@ form.card { border-color: var(--line); }
 .rowprice.free { color: var(--ok); }
 .toggle { display: flex; align-items: center; gap: 10px; font-weight: 600; }
 .toggle input { width: 22px; height: 22px; accent-color: var(--accent); }
+.btn.danger { background: var(--surface); color: var(--bad); border: 2px solid var(--bad); width: 100%; }
+.btn.danger.armed { background: var(--bad); color: #fff; }
 </style>
 </head>
 <body>
@@ -229,6 +231,10 @@ form.card { border-color: var(--line); }
       <div class="hint" id="formErro" style="color:var(--bad)"></div>
       <button class="btn big" id="btnSalvarPessoa" type="submit">Salvar</button>
       <button class="link" id="btnCancelar" type="button">Cancelar</button>
+      <div id="boxExcluir" class="stack" style="gap:8px;border-top:1px solid var(--line);padding-top:14px" hidden>
+        <div class="hint" id="avisoExcluir"></div>
+        <button class="btn danger" id="btnExcluir" type="button">Excluir do cadastro</button>
+      </div>
     </form>
 
     <div id="cadLista" class="stack" style="gap:10px">
@@ -261,7 +267,7 @@ const st = {
   aba: "day", sub: "add",
   data: isoHoje(), turno: new Date().getHours() < 13 ? "Manhã" : "Tarde",
   sel: null, pago: true, forma: "Pix", filtro: "Todos", receber: null,
-  editando: null, tipoForm: "Visitante", filtroTipo: "Todos",
+  editando: null, tipoForm: "Visitante", filtroTipo: "Todos", confirmaExcluir: false,
 };
 const $ = id => document.getElementById(id);
 
@@ -392,6 +398,7 @@ async function receber(id, forma) {
 // ---------- cadastro ----------
 function abrirForm(pessoa) {
   st.editando = pessoa ? pessoa.id : "nova";
+  st.confirmaExcluir = false;
   st.tipoForm = pessoa ? pessoa.tipo : "Visitante";
   $("formPessoa").reset(); $("formErro").textContent = "";
   $("formTitulo").textContent = pessoa ? "Editar cadastro" : "Nova pessoa";
@@ -405,7 +412,23 @@ function abrirForm(pessoa) {
   }
   render(); window.scrollTo({ top: 0 }); $("fNome").focus();
 }
-function fecharForm() { st.editando = null; render(); }
+function fecharForm() { st.editando = null; st.confirmaExcluir = false; render(); }
+
+async function excluirPessoa() {
+  const p = st.todos.find(x => x.id === st.editando); if (!p || st.ocupado) return;
+  if (!st.confirmaExcluir) { st.confirmaExcluir = true; render(); return; }
+  st.ocupado = true; render();
+  try {
+    if (!(await linhaConfere("Pessoas", p.row, p.id))) { $("formErro").textContent = "A planilha mudou. Toque em Atualizar e tente de novo."; return; }
+    await chamar("update_spreadsheet", { requests: [{ deleteDimension: { range: { sheetId: 0, dimension: "ROWS", startIndex: p.row - 1, endIndex: p.row } } }] });
+    toast(`${p.nome} foi excluído do cadastro.`);
+    if (st.sel && st.sel.id === p.id) st.sel = null;
+    st.editando = null; st.confirmaExcluir = false;
+    await carregar(true);
+  } catch (e) {
+    $("formErro").textContent = incerto(e) ? "A planilha demorou a responder. Toque em Atualizar e confira se a pessoa ainda está na lista." : explicarErro(e);
+  } finally { st.ocupado = false; render(); }
+}
 
 async function salvarPessoa(ev) {
   ev.preventDefault(); if (st.ocupado) return;
@@ -576,6 +599,17 @@ function renderCad() {
   $("btnSalvarPessoa").disabled = st.ocupado || !st.mcp;
   if (st.ocupado && editando) $("btnSalvarPessoa").textContent = "Salvando…";
   else if (editando) $("btnSalvarPessoa").textContent = st.editando === "nova" ? "Cadastrar" : "Salvar alterações";
+  const pessoa = editando && st.editando !== "nova" ? st.todos.find(p => p.id === st.editando) : null;
+  $("boxExcluir").hidden = !pessoa;
+  if (pessoa) {
+    const n = st.presencas.filter(x => x.pessoa === pessoa.id).length;
+    $("avisoExcluir").textContent = st.confirmaExcluir
+      ? `Tem certeza? ${pessoa.nome} sai do cadastro.${n ? ` As ${plural(n, "presença registrada", "presenças registradas")} continuam no histórico.` : ""}`
+      : "Se a pessoa só parou de vir, prefira desmarcar \"Ativo\": ela some da lista do day use e o cadastro fica guardado.";
+    $("btnExcluir").textContent = st.ocupado && st.confirmaExcluir ? "Excluindo…" : st.confirmaExcluir ? "Sim, excluir definitivamente" : "Excluir do cadastro";
+    $("btnExcluir").classList.toggle("armed", st.confirmaExcluir);
+    $("btnExcluir").disabled = st.ocupado || !st.mcp;
+  }
   if (editando) return;
   document.querySelectorAll("#filtroTipo button").forEach(b => b.setAttribute("aria-pressed", b.dataset.t === st.filtroTipo));
   const box = $("listaCad");
@@ -606,6 +640,7 @@ document.querySelectorAll("#filtro button").forEach(b => b.onclick = () => { st.
 $("btnNova").onclick = () => abrirForm(null);
 $("btnCancelar").onclick = () => { delete $("formPessoa").dataset.confirmouNome; fecharForm(); };
 $("formPessoa").addEventListener("submit", salvarPessoa);
+$("btnExcluir").onclick = excluirPessoa;
 $("fNome").addEventListener("input", () => delete $("formPessoa").dataset.confirmouNome);
 $("buscaCad").addEventListener("input", renderCad);
 document.querySelectorAll("#segTipo button").forEach(b => b.onclick = () => { st.tipoForm = b.dataset.tipo; render(); });
