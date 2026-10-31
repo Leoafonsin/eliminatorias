@@ -266,7 +266,7 @@ const st = {
   mcp: null, todos: [], presencas: [], precos: { ...PRECO_PADRAO }, carregado: false, ocupado: false,
   aba: "day", sub: "add",
   data: isoHoje(), turno: new Date().getHours() < 13 ? "Manhã" : "Tarde",
-  sel: null, pago: true, forma: "Pix", filtro: "Todos", receber: null,
+  sel: null, pago: true, forma: "Pix", filtro: "Todos", receber: null, acoes: null, confirmaDel: null,
   editando: null, tipoForm: "Visitante", filtroTipo: "Todos", confirmaExcluir: false,
 };
 const $ = id => document.getElementById(id);
@@ -393,6 +393,34 @@ async function receber(id, forma) {
     await carregar(true);
   } catch (e) { toast(explicarErro(e), true); }
   finally { st.ocupado = false; render(); }
+}
+
+async function desfazerPagamento(id) {
+  const x = st.presencas.find(p => p.id === id); if (!x || st.ocupado) return;
+  st.ocupado = true; render();
+  try {
+    if (!(await linhaConfere("Presencas", x.row, id))) { toast("A planilha mudou. Atualizei a lista, tente de novo.", true); await carregar(true); return; }
+    await chamar("update_values", { range: `Presencas!H${x.row}:I${x.row}`, values: [[false, ""]] });
+    toast(`Pagamento de ${x.nome} desfeito. Ficou como a receber.`);
+    st.acoes = null;
+    await carregar(true);
+  } catch (e) { toast(explicarErro(e), true); }
+  finally { st.ocupado = false; render(); }
+}
+
+async function excluirPresenca(id) {
+  const x = st.presencas.find(p => p.id === id); if (!x || st.ocupado) return;
+  if (st.confirmaDel !== id) { st.confirmaDel = id; render(); return; }
+  st.ocupado = true; render();
+  try {
+    if (!(await linhaConfere("Presencas", x.row, id))) { toast("A planilha mudou. Atualizei a lista, tente de novo.", true); await carregar(true); return; }
+    await chamar("update_spreadsheet", { requests: [{ deleteDimension: { range: { sheetId: 1, dimension: "ROWS", startIndex: x.row - 1, endIndex: x.row } } }] });
+    toast(`Presença de ${x.nome} excluída.`);
+    st.acoes = null; st.confirmaDel = null;
+    await carregar(true);
+  } catch (e) {
+    toast(incerto(e) ? "A planilha demorou a responder. Toque em Atualizar e confira a lista antes de tentar de novo." : explicarErro(e), true);
+  } finally { st.ocupado = false; render(); }
 }
 
 // ---------- cadastro ----------
@@ -576,17 +604,30 @@ function renderLista() {
   if (!lista.length) { box.innerHTML = `<div class="empty">${st.filtro === "Pendentes" ? "Ninguém devendo neste dia." : "Ninguém marcado neste dia ainda."}</div>`; return; }
   box.innerHTML = lista.map(x => {
     const status = x.valor === 0 ? `<span class="chip ok">Isento</span>` : x.pago ? `<span class="chip ok">${esc(x.forma || "Pago")}</span>` : `<span class="chip pend">A receber</span>`;
-    const abrindo = st.receber === x.id;
+    const recebendo = st.receber === x.id, comAcoes = st.acoes === x.id, confirmando = st.confirmaDel === x.id;
+    const dis = st.ocupado ? "disabled" : "";
     return `<div class="row" style="flex-wrap:wrap">
       <div class="who"><div class="name">${esc(x.nome)}</div>
       <div class="meta">${esc(x.turno)} · ${esc(x.tipo)} · ${x.valor ? brl(x.valor) : "R$ 0"}${x.hora ? " · " + esc(x.hora) : ""}</div></div>
-      ${!x.pago && x.valor > 0 && !abrindo ? `<button class="btn" type="button" data-receber="${esc(x.id)}">Receber</button>` : status}
-      ${abrindo ? `<div class="opts" style="width:100%">${["Pix", "Dinheiro", "Cartão"].map(f => `<button type="button" data-rid="${esc(x.id)}" data-rf="${f}" ${st.ocupado ? "disabled" : ""}>${f}</button>`).join("")}<button class="link" type="button" data-cancel="1">Cancelar</button></div>` : ""}
+      ${!x.pago && x.valor > 0 && !recebendo ? `<button class="btn" type="button" data-receber="${esc(x.id)}">Receber</button>` : status}
+      ${recebendo ? `<div class="opts" style="width:100%">${["Pix", "Dinheiro", "Cartão"].map(f => `<button type="button" data-rid="${esc(x.id)}" data-rf="${f}" ${dis}>${f}</button>`).join("")}<button class="link" type="button" data-cancel="1">Cancelar</button></div>` : ""}
+      <div style="width:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        ${comAcoes ? `
+          ${x.pago && x.valor > 0 ? `<button class="btn ghost" type="button" data-desfazer="${esc(x.id)}" ${dis}>Desfazer pagamento</button>` : ""}
+          <button class="btn danger ${confirmando ? "armed" : ""}" style="width:auto" type="button" data-del="${esc(x.id)}" ${dis}>${confirmando ? "Sim, excluir presença" : "Excluir presença"}</button>
+          <button class="link" type="button" data-fechar="1">Fechar</button>
+          ${confirmando ? `<div class="hint" style="width:100%">A linha de ${esc(x.nome)} em ${esc(x.data)} (${esc(x.turno)}) será apagada da planilha${x.pago && x.valor > 0 ? `, junto com o pagamento de ${brl(x.valor)}` : ""}.</div>` : ""}`
+        : `<button class="link" type="button" data-acoes="${esc(x.id)}">Opções</button>`}
+      </div>
     </div>`;
   }).join("");
-  box.querySelectorAll("[data-receber]").forEach(b => b.onclick = () => { st.receber = b.dataset.receber; render(); });
+  box.querySelectorAll("[data-receber]").forEach(b => b.onclick = () => { st.receber = b.dataset.receber; st.acoes = null; render(); });
   box.querySelectorAll("[data-rid]").forEach(b => b.onclick = () => receber(b.dataset.rid, b.dataset.rf));
   box.querySelectorAll("[data-cancel]").forEach(b => b.onclick = () => { st.receber = null; render(); });
+  box.querySelectorAll("[data-acoes]").forEach(b => b.onclick = () => { st.acoes = b.dataset.acoes; st.confirmaDel = null; st.receber = null; render(); });
+  box.querySelectorAll("[data-fechar]").forEach(b => b.onclick = () => { st.acoes = null; st.confirmaDel = null; render(); });
+  box.querySelectorAll("[data-desfazer]").forEach(b => b.onclick = () => desfazerPagamento(b.dataset.desfazer));
+  box.querySelectorAll("[data-del]").forEach(b => b.onclick = () => excluirPresenca(b.dataset.del));
 }
 
 function renderCad() {
