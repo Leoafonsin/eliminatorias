@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day Use do Clube</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: uma coluna estreita de app de celular; abas no topo, ação principal sempre visível. */
+:root {
+  --bg: #eef3f4;
+  --surface: #ffffff;
+  --ink: #12282d;
+  --muted: #5b7176;
+  --line: #d3dfe1;
+  --accent: #0b6e7f;
+  --accent-ink: #ffffff;
+  --accent-soft: #d6ecef;
+  --ok: #1f7a43;
+  --ok-soft: #dcf1e3;
+  --warn: #9a5b00;
+  --warn-soft: #fbecd2;
+  --bad: #b3261e;
+  --bad-soft: #f9dedc;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1a1d; --surface: #152629; --ink: #e4eff1; --muted: #93abb0; --line: #263d42;
+    --accent: #3fb3c6; --accent-ink: #062126; --accent-soft: #173a40;
+    --ok: #6fd295; --ok-soft: #173826; --warn: #f0b45a; --warn-soft: #3a2a10;
+    --bad: #ff8a80; --bad-soft: #3d1a18; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1a1d; --surface: #152629; --ink: #e4eff1; --muted: #93abb0; --line: #263d42;
+  --accent: #3fb3c6; --accent-ink: #062126; --accent-soft: #173a40;
+  --ok: #6fd295; --ok-soft: #173826; --warn: #f0b45a; --warn-soft: #3a2a10;
+  --bad: #ff8a80; --bad-soft: #3d1a18; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.4 var(--body); }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.app { max-width: 560px; margin: 0 auto; padding: 12px 16px 120px; display: flex; flex-direction: column; gap: 14px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+h1 { font: 700 28px/1 var(--display); letter-spacing: .02em; margin: 0; text-transform: uppercase; }
+.date { color: var(--muted); font-size: 14px; }
+.sync { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.icon-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px 12px; font-weight: 600; }
+
+.tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; gap: 4px; }
+.tabs button { border: 0; background: transparent; padding: 10px; border-radius: 9px; font: 700 18px var(--display); text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+
+.label { font: 700 14px var(--display); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 6px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg button { border: 2px solid var(--line); background: var(--surface); border-radius: 12px; padding: 12px 8px; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+.seg button b { font: 700 22px/1 var(--display); text-transform: uppercase; }
+.seg button span { font-size: 13px; color: var(--muted); }
+.seg button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+
+.search { display: flex; gap: 8px; }
+.search input { flex: 1; min-width: 0; border: 2px solid var(--line); background: var(--surface); border-radius: 12px; padding: 12px 14px; font-size: 17px; }
+.search input:focus { border-color: var(--accent); outline: none; }
+.btn { border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 600; background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: var(--surface); color: var(--accent); border: 2px solid var(--accent); }
+.btn.big { width: 100%; padding: 16px; font: 700 22px var(--display); text-transform: uppercase; letter-spacing: .04em; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.list { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 0; border-top: 1px solid var(--line); background: transparent; text-align: left; width: 100%; }
+.row:first-child { border-top: 0; }
+button.row:hover { background: var(--accent-soft); }
+.row .who { flex: 1; min-width: 0; }
+.row .name { font-weight: 600; overflow-wrap: anywhere; }
+.row .meta { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chip { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.chip.aluno { background: var(--accent-soft); color: var(--accent); }
+.chip.visitante { background: var(--warn-soft); color: var(--warn); }
+.chip.ok { background: var(--ok-soft); color: var(--ok); }
+.chip.pend { background: var(--bad-soft); color: var(--bad); }
+.empty { padding: 18px 14px; color: var(--muted); text-align: center; }
+
+.card { background: var(--surface); border: 2px solid var(--accent); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.card-head .name { font: 700 26px/1.05 var(--display); text-transform: uppercase; overflow-wrap: anywhere; }
+.price { text-align: right; }
+.price b { display: block; font: 700 32px/1 var(--display); font-variant-numeric: tabular-nums; }
+.price small { color: var(--muted); font-size: 13px; }
+.price.free b { color: var(--ok); }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opts button { border: 2px solid var(--line); background: var(--surface); border-radius: 99px; padding: 8px 16px; font-weight: 600; }
+.opts button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.link { background: none; border: 0; color: var(--muted); text-decoration: underline; padding: 4px; font-size: 14px; }
+
+form.card { border-color: var(--line); }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-weight: 600; font-size: 14px; }
+.field input { border: 2px solid var(--line); background: var(--bg); border-radius: 10px; padding: 11px 12px; font-size: 16px; }
+.field input:focus { border-color: var(--accent); outline: none; }
+.hint { font-size: 13px; color: var(--muted); }
+
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.tile b { display: block; font: 700 26px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.tile span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.tile.pend b { color: var(--bad); }
+.tile.ok b { color: var(--ok); }
+.turno-sum { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.filter { display: flex; gap: 8px; }
+
+.banner { border-radius: 12px; padding: 12px 14px; font-size: 15px; }
+.banner.err { background: var(--bad-soft); color: var(--bad); }
+.banner.info { background: var(--accent-soft); color: var(--ink); }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 12px 18px; border-radius: 12px; font-weight: 600; max-width: calc(100% - 32px); box-shadow: 0 6px 24px rgba(0,0,0,.25); z-index: 10; }
+.toast.err { background: var(--bad); color: #fff; }
+[hidden] { display: none !important; }
+@media (max-width: 400px) { .tiles b { font-size: 22px; } .seg button b { font-size: 19px; } }
+.stack { display: flex; flex-direction: column; gap: 14px; }
+.datebox { display: flex; gap: 8px; align-items: stretch; }
+.datebox input { flex: 1; min-width: 0; border: 2px solid var(--line); background: var(--surface); border-radius: 12px; padding: 12px 14px; font-size: 17px; }
+.datebox input:focus { border-color: var(--accent); outline: none; }
+.datelabel { font: 700 22px/1.1 var(--display); text-transform: uppercase; }
+.subtabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-bottom: 2px solid var(--line); }
+.subtabs button { border: 0; background: none; padding: 10px 4px; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; }
+.subtabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.rowprice { font: 700 18px var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rowprice.free { color: var(--ok); }
+.toggle { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.toggle input { width: 22px; height: 22px; accent-color: var(--accent); }
+.btn.danger { background: var(--surface); color: var(--bad); border: 2px solid var(--bad); width: 100%; }
+.btn.danger.armed { background: var(--bad); color: #fff; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>Day Use do Clube</h1>
+      <div class="date" id="hoje"></div>
+    </div>
+    <div class="sync">
+      <span id="status">Conectando…</span>
+      <button class="icon-btn" id="btnReload" type="button">Atualizar</button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner info" hidden></div>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tabDay" aria-selected="true" type="button">Day Use</button>
+    <button role="tab" id="tabCad" aria-selected="false" type="button">Cadastro</button>
+  </nav>
+
+  <!-- DAY USE -->
+  <section id="viewDay" class="stack">
+    <div>
+      <p class="label"><label for="fData">Dia do day use</label></p>
+      <div class="datebox">
+        <input id="fData" type="date">
+        <button class="icon-btn" id="btnHoje" type="button">Hoje</button>
+      </div>
+      <div class="datelabel" id="dataExtenso" style="margin-top:8px"></div>
+    </div>
+    <div>
+      <p class="label">Período</p>
+      <div class="seg" id="segTurno">
+        <button type="button" data-turno="Manhã" aria-pressed="false"><b>Manhã</b><span>Aluno isento · Visitante R$ 40</span></button>
+        <button type="button" data-turno="Tarde" aria-pressed="false"><b>Tarde</b><span>Aluno R$ 30 · Visitante R$ 40</span></button>
+      </div>
+    </div>
+
+    <div class="subtabs" role="tablist">
+      <button role="tab" id="subAdd" aria-selected="true" type="button">Marcar presença</button>
+      <button role="tab" id="subLista" aria-selected="false" type="button">Presentes no dia</button>
+    </div>
+
+    <div id="paneAdd" class="stack">
+      <div id="selCard" class="card" hidden></div>
+      <div id="escolhaBox" class="stack" style="gap:10px">
+        <div class="search">
+          <input id="busca" type="search" placeholder="Buscar no cadastro" autocomplete="off" aria-label="Buscar pessoa do cadastro">
+        </div>
+        <div class="list" id="resultados"></div>
+        <div class="hint" id="dicaCad">Pessoa não está na lista? Cadastre na aba Cadastro.</div>
+      </div>
+    </div>
+
+    <div id="paneLista" class="stack" hidden>
+      <div class="tiles">
+        <div class="tile"><b id="tPessoas">0</b><span>Pessoas</span></div>
+        <div class="tile ok"><b id="tRecebido">R$ 0</b><span>Recebido</span></div>
+        <div class="tile pend"><b id="tPendente">R$ 0</b><span>A receber</span></div>
+      </div>
+      <div class="turno-sum" id="porTurno"></div>
+      <div class="filter opts" id="filtro">
+        <button type="button" data-f="Todos" aria-pressed="true">Todos</button>
+        <button type="button" data-f="Manhã" aria-pressed="false">Manhã</button>
+        <button type="button" data-f="Tarde" aria-pressed="false">Tarde</button>
+        <button type="button" data-f="Pendentes" aria-pressed="false">A receber</button>
+      </div>
+      <div class="list" id="listaDia"></div>
+    </div>
+  </section>
+
+  <!-- CADASTRO -->
+  <section id="viewCad" class="stack" hidden>
+    <form id="formPessoa" class="card" hidden novalidate>
+      <div class="card-head"><div class="name" id="formTitulo">Nova pessoa</div></div>
+      <div>
+        <p class="label">Tipo</p>
+        <div class="opts" id="segTipo">
+          <button type="button" data-tipo="Aluno" aria-pressed="false">Aluno</button>
+          <button type="button" data-tipo="Visitante" aria-pressed="true">Visitante</button>
+        </div>
+      </div>
+      <div class="field"><label for="fNome">Nome completo *</label><input id="fNome" autocomplete="off"></div>
+      <div class="field"><label for="fEmail">E-mail (opcional)</label><input id="fEmail" type="email" inputmode="email" autocomplete="off" placeholder="nome@exemplo.com"></div>
+      <div class="field"><label for="fTel">Telefone (opcional)</label><input id="fTel" inputmode="tel" autocomplete="off" placeholder="(21) 99999-9999"></div>
+      <div class="field" id="boxMat" hidden><label for="fMat">Matrícula (opcional)</label><input id="fMat" autocomplete="off"></div>
+      <label class="toggle" id="boxAtivo" hidden><input type="checkbox" id="fAtivo"> Ativo (aparece na lista do day use)</label>
+      <div class="hint" id="formErro" style="color:var(--bad)"></div>
+      <button class="btn big" id="btnSalvarPessoa" type="submit">Salvar</button>
+      <button class="link" id="btnCancelar" type="button">Cancelar</button>
+      <div id="boxExcluir" class="stack" style="gap:8px;border-top:1px solid var(--line);padding-top:14px" hidden>
+        <div class="hint" id="avisoExcluir"></div>
+        <button class="btn danger" id="btnExcluir" type="button">Excluir do cadastro</button>
+      </div>
+    </form>
+
+    <div id="cadLista" class="stack" style="gap:10px">
+      <button class="btn big" id="btnNova" type="button">+ Nova pessoa</button>
+      <div class="search">
+        <input id="buscaCad" type="search" placeholder="Buscar por nome, e-mail ou telefone" autocomplete="off" aria-label="Buscar no cadastro">
+      </div>
+      <div class="opts" id="filtroTipo">
+        <button type="button" data-t="Todos" aria-pressed="true">Todos</button>
+        <button type="button" data-t="Aluno" aria-pressed="false">Alunos</button>
+        <button type="button" data-t="Visitante" aria-pressed="false">Visitantes</button>
+      </div>
+      <div class="list" id="listaCad"></div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const PRECO_PADRAO = { "Manhã|Aluno": 0, "Manhã|Visitante": 40, "Tarde|Aluno": 30, "Tarde|Visitante": 40 };
+const MAX_LISTA = 80;
+
+const pad = n => String(n).padStart(2, "0");
+const isoHoje = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+
+const st = {
+  mcp: null, todos: [], presencas: [], precos: { ...PRECO_PADRAO }, carregado: false, ocupado: false,
+  aba: "day", sub: "add",
+  data: isoHoje(), turno: new Date().getHours() < 13 ? "Manhã" : "Tarde",
+  sel: null, pago: true, forma: "Pix", filtro: "Todos", receber: null, acoes: null, confirmaDel: null,
+  editando: null, tipoForm: "Visitante", filtroTipo: "Todos", confirmaExcluir: false,
+};
+const $ = id => document.getElementById(id);
+
+// ---------- utilidades ----------
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const norm = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+const digitos = s => String(s ?? "").replace(/\D/g, "");
+const brl = v => v === 0 ? "Isento" : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const brlCurto = v => "R$ " + v.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
+const isoParaBr = iso => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
+const dataBr = () => isoParaBr(st.data);
+const ehHoje = () => st.data === isoHoje();
+const horaStr = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const uid = () => Array.from(crypto.getRandomValues(new Uint8Array(4)), b => b.toString(16).padStart(2, "0")).join("");
+const dinheiro = v => { if (typeof v === "number") return v; const t = String(v ?? "").replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."); const n = parseFloat(t); return isNaN(n) ? 0 : n; };
+const verdadeiro = v => ["true", "verdadeiro", "sim", "1", "x"].includes(norm(v));
+const plural = (n, s, p) => `${n} ${n === 1 ? s : p}`;
+function normData(v) {
+  const s = String(v ?? "").trim(); const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return `${pad(m[1])}/${pad(m[2])}/${m[3]}`;
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/); return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : s;
+}
+const ativos = () => st.todos.filter(p => p.ativo);
+const valorPara = (p, turno) => st.precos[`${turno}|${p.tipo}`] ?? PRECO_PADRAO[`${turno}|${p.tipo}`] ?? 40;
+const jaEntrou = (pessoaId, turno) => st.presencas.find(x => x.pessoa === pessoaId && x.turno === turno && x.data === dataBr());
+const chipTipo = t => `<span class="chip ${t === "Aluno" ? "aluno" : "visitante"}">${t}</span>`;
+const contato = p => [p.email && esc(p.email), p.tel && esc(p.tel)].filter(Boolean).join(" · ");
+
+let toastTimer;
+function toast(msg, erro = false) {
+  const t = $("toast"); t.textContent = msg; t.className = "toast" + (erro ? " err" : ""); t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), erro ? 6000 : 3000);
+}
+function banner(msg, tipo = "info") { const b = $("banner"); if (!msg) { b.hidden = true; return; } b.className = "banner " + tipo; b.textContent = msg; b.hidden = false; }
+
+function explicarErro(e) {
+  const m = (e && e.message) || String(e || "erro");
+  if (/authorization|autoriza|permission|permiss/i.test(m)) return "Sem permissão para acessar a planilha. Peça ao dono do app para liberar o seu acesso.";
+  return "Não consegui falar com a planilha: " + m + ". Toque em Atualizar.";
+}
+const incerto = e => /timed out|tempo|network|rede|NetworkError/i.test((e && e.message) || "");
+
+// ---------- planilha (via Apps Script) ----------
+function servidor(fn, ...args) {
+  return new Promise((ok, falha) => google.script.run.withSuccessHandler(ok).withFailureHandler(falha)[fn](...args));
+}
+async function chamar(tool, input) {
+  if (tool === "get_values") return { values: await servidor("lerIntervalo", input.range) };
+  if (tool === "update_values") return servidor("gravar", input.range, input.values);
+  if (tool === "update_spreadsheet") return servidor("excluirLinha", input.requests[0].deleteDimension.range);
+  throw new Error("operação desconhecida: " + tool);
+}
+async function ler(range) { const p = await chamar("get_values", { range }); return Array.isArray(p.values) ? p.values : []; }
+// O servidor trava a planilha enquanto acha a próxima linha livre e grava, para dois celulares não gravarem na mesma linha.
+async function gravarNovaLinha(aba, ultimaCol, linha) { return servidor("adicionarLinha", aba, linha); }
+// Confere se a linha ainda é da mesma pessoa/registro antes de alterar.
+async function linhaConfere(aba, row, id) { const c = await ler(`${aba}!A${row}:A${row}`); return !!(c[0] && c[0][0] === id); }
+
+async function carregar(silencioso = false) {
+  if (!st.mcp) return;
+  $("status").textContent = "Sincronizando…";
+  try {
+    const [pes, pre, prc] = await Promise.all([ler("Pessoas!A2:J"), ler("Presencas!A2:K"), ler("Precos!A2:D")]);
+    st.todos = pes.map((r, i) => ({
+      row: i + 2, id: r[0], nome: (r[1] || "").trim(), tipo: r[2] === "Aluno" ? "Aluno" : "Visitante",
+      cpf: digitos(r[3]), tel: (r[4] || "").trim(), email: (r[5] || "").trim().toLowerCase(), mat: (r[6] || "").trim(),
+      ativo: r[7] === undefined || r[7] === "" || verdadeiro(r[7]),
+    })).filter(p => p.id && p.nome);
+    st.todos.forEach(p => { p.busca = [norm(p.nome), norm(p.mat), p.email, digitos(p.tel)].join(" "); });
+    st.todos.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    st.presencas = pre.map((r, i) => ({ row: i + 2, id: r[0], data: normData(r[1]), turno: r[2], pessoa: r[3], nome: r[4], tipo: r[5], valor: dinheiro(r[6]), pago: verdadeiro(r[7]), forma: r[8] || "", hora: r[9] || "" }))
+      .filter(x => x.id);
+    st.precos = { ...PRECO_PADRAO };
+    prc.forEach(r => { if (r[1] && r[2] && r[3] !== undefined) st.precos[`${r[1]}|${r[2]}`] = dinheiro(r[3]); });
+    st.carregado = true;
+    banner("");
+    $("status").textContent = `${plural(st.todos.length, "pessoa", "pessoas")} · ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    if (st.sel) st.sel = st.todos.find(p => p.id === st.sel.id) || null;
+  } catch (e) {
+    $("status").textContent = "Sem conexão";
+    if (!silencioso || !st.carregado) banner(explicarErro(e), "err"); else toast("Não consegui atualizar agora.", true);
+  }
+  render();
+}
+
+// ---------- day use ----------
+async function registrar() {
+  const p = st.sel; if (!p || st.ocupado) return;
+  if (jaEntrou(p.id, st.turno)) { toast(`${p.nome} já está marcado na ${st.turno.toLowerCase()} de ${dataBr()}.`, true); return; }
+  const valor = valorPara(p, st.turno);
+  const pago = valor === 0 ? true : st.pago;
+  const forma = valor === 0 ? "Isento" : (pago ? st.forma : "");
+  st.ocupado = true; render();
+  try {
+    await gravarNovaLinha("Presencas", "K", [uid(), dataBr(), st.turno, p.id, p.nome, p.tipo, valor, pago, forma, horaStr(), ""]);
+    toast(`Presença marcada: ${p.nome}${valor === 0 ? " (isento)" : pago ? ` · ${brl(valor)} no ${forma}` : " · a receber"}`);
+    st.sel = null; $("busca").value = "";
+    await carregar(true);
+  } catch (e) {
+    toast(incerto(e) ? "A planilha demorou a responder. Toque em Atualizar e confira em Presentes no dia antes de marcar de novo." : explicarErro(e), true);
+  } finally { st.ocupado = false; render(); }
+}
+
+async function receber(id, forma) {
+  const x = st.presencas.find(p => p.id === id); if (!x || st.ocupado) return;
+  st.ocupado = true; render();
+  try {
+    if (!(await linhaConfere("Presencas", x.row, id))) { toast("A planilha mudou. Atualizei a lista, tente de novo.", true); await carregar(true); return; }
+    await chamar("update_values", { range: `Presencas!H${x.row}:I${x.row}`, values: [[true, forma]] });
+    toast(`${x.nome}: ${brl(x.valor)} recebido no ${forma}`);
+    st.receber = null;
+    await carregar(true);
+  } catch (e) { toast(explicarErro(e), true); }
+  finally { st.ocupado = false; render(); }
+}
+
+async function desfazerPagamento(id) {
+  const x = st.presencas.find(p => p.id === id); if (!x || st.ocupado) return;
+  st.ocupado = true; render();
+  try {
+    if (!(await linhaConfere("Presencas", x.row, id))) { toast("A planilha mudou. Atualizei a lista, tente de novo.", true); await carregar(true); return; }
+    await chamar("update_values", { range: `Presencas!H${x.row}:I${x.row}`, values: [[false, ""]] });
+    toast(`Pagamento de ${x.nome} desfeito. Ficou como a receber.`);
+    st.acoes = null;
+    await carregar(true);
+  } catch (e) { toast(explicarErro(e), true); }
+  finally { st.ocupado = false; render(); }
+}
+
+async function excluirPresenca(id) {
+  const x = st.presencas.find(p => p.id === id); if (!x || st.ocupado) return;
+  if (st.confirmaDel !== id) { st.confirmaDel = id; render(); return; }
+  st.ocupado = true; render();
+  try {
+    if (!(await linhaConfere("Presencas", x.row, id))) { toast("A planilha mudou. Atualizei a lista, tente de novo.", true); await carregar(true); return; }
+    await chamar("update_spreadsheet", { requests: [{ deleteDimension: { range: { sheetId: 1, dimension: "ROWS", startIndex: x.row - 1, endIndex: x.row } } }] });
+    toast(`Presença de ${x.nome} excluída.`);
+    st.acoes = null; st.confirmaDel = null;
+    await carregar(true);
+  } catch (e) {
+    toast(incerto(e) ? "A planilha demorou a responder. Toque em Atualizar e confira a lista antes de tentar de novo." : explicarErro(e), true);
+  } finally { st.ocupado = false; render(); }
+}
+
+// ---------- cadastro ----------
+function abrirForm(pessoa) {
+  st.editando = pessoa ? pessoa.id : "nova";
+  st.confirmaExcluir = false;
+  st.tipoForm = pessoa ? pessoa.tipo : "Visitante";
+  $("formPessoa").reset(); $("formErro").textContent = "";
+  $("formTitulo").textContent = pessoa ? "Editar cadastro" : "Nova pessoa";
+  $("btnSalvarPessoa").textContent = pessoa ? "Salvar alterações" : "Cadastrar";
+  if (pessoa) {
+    $("fNome").value = pessoa.nome; $("fEmail").value = pessoa.email; $("fTel").value = pessoa.tel; $("fMat").value = pessoa.mat;
+    $("fAtivo").checked = pessoa.ativo;
+  } else {
+    const q = $("buscaCad").value.trim();
+    if (q.includes("@")) $("fEmail").value = q; else if (q && digitos(q).length < 8) $("fNome").value = q;
+  }
+  render(); window.scrollTo({ top: 0 }); $("fNome").focus();
+}
+function fecharForm() { st.editando = null; st.confirmaExcluir = false; render(); }
+
+async function excluirPessoa() {
+  const p = st.todos.find(x => x.id === st.editando); if (!p || st.ocupado) return;
+  if (!st.confirmaExcluir) { st.confirmaExcluir = true; render(); return; }
+  st.ocupado = true; render();
+  try {
+    if (!(await linhaConfere("Pessoas", p.row, p.id))) { $("formErro").textContent = "A planilha mudou. Toque em Atualizar e tente de novo."; return; }
+    await chamar("update_spreadsheet", { requests: [{ deleteDimension: { range: { sheetId: 0, dimension: "ROWS", startIndex: p.row - 1, endIndex: p.row } } }] });
+    toast(`${p.nome} foi excluído do cadastro.`);
+    if (st.sel && st.sel.id === p.id) st.sel = null;
+    st.editando = null; st.confirmaExcluir = false;
+    await carregar(true);
+  } catch (e) {
+    $("formErro").textContent = incerto(e) ? "A planilha demorou a responder. Toque em Atualizar e confira se a pessoa ainda está na lista." : explicarErro(e);
+  } finally { st.ocupado = false; render(); }
+}
+
+async function salvarPessoa(ev) {
+  ev.preventDefault(); if (st.ocupado) return;
+  const nome = $("fNome").value.trim().replace(/\s+/g, " ");
+  const tipo = st.tipoForm;
+  const email = $("fEmail").value.trim().toLowerCase();
+  const tel = $("fTel").value.trim();
+  const mat = tipo === "Aluno" ? $("fMat").value.trim().toUpperCase() : "";
+  const editando = st.editando !== "nova" ? st.todos.find(p => p.id === st.editando) : null;
+  const ativo = editando ? $("fAtivo").checked : true;
+  const outros = st.todos.filter(p => !editando || p.id !== editando.id);
+  const erro = msg => { $("formErro").textContent = msg; };
+  if (nome.length < 3) return erro("Digite o nome completo.");
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return erro("Esse e-mail não parece válido. Confira se tem @ e o domínio.");
+  if (email) { const d = outros.find(x => x.email === email); if (d) return erro(`Esse e-mail já está cadastrado para ${d.nome}.`); }
+  if (tel && digitos(tel).length < 10) return erro("Coloque o telefone com DDD, ou deixe em branco.");
+  if (mat) { const d = outros.find(x => x.mat.toUpperCase() === mat); if (d) return erro(`Essa matrícula já é de ${d.nome}.`); }
+  if (!editando) { const d = outros.find(x => norm(x.nome) === norm(nome)); if (d && !$("formPessoa").dataset.confirmouNome) {
+    $("formPessoa").dataset.confirmouNome = "1"; return erro(`Já existe ${d.nome} (${d.tipo}) no cadastro. Se for outra pessoa, toque em Cadastrar de novo.`); } }
+  erro("");
+  const txt = v => v ? "'" + v : "";
+  st.ocupado = true; render();
+  try {
+    if (editando) {
+      if (!(await linhaConfere("Pessoas", editando.row, editando.id))) { erro("A planilha mudou. Toque em Atualizar e tente de novo."); return; }
+      await chamar("update_values", { range: `Pessoas!B${editando.row}:H${editando.row}`, values: [[nome, tipo, txt(editando.cpf), txt(tel), txt(email), txt(mat), ativo]] });
+      toast(`Cadastro atualizado: ${nome}`);
+    } else {
+      await gravarNovaLinha("Pessoas", "J", [uid(), nome, tipo, "", txt(tel), txt(email), txt(mat), true, isoParaBr(isoHoje()), ""]);
+      toast(`${tipo} cadastrado: ${nome}`);
+    }
+    delete $("formPessoa").dataset.confirmouNome;
+    st.editando = null;
+    await carregar(true);
+  } catch (e) {
+    erro(incerto(e) ? "A planilha demorou a responder. Toque em Atualizar e confira a lista antes de salvar de novo." : explicarErro(e));
+  } finally { st.ocupado = false; render(); }
+}
+
+// ---------- telas ----------
+function render() {
+  $("hoje").textContent = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+  $("tabDay").setAttribute("aria-selected", st.aba === "day");
+  $("tabCad").setAttribute("aria-selected", st.aba === "cad");
+  $("viewDay").hidden = st.aba !== "day";
+  $("viewCad").hidden = st.aba !== "cad";
+  if (st.aba === "day") renderDay(); else renderCad();
+}
+
+function renderDay() {
+  $("fData").value = st.data;
+  const d = new Date(st.data + "T12:00:00");
+  $("dataExtenso").textContent = (ehHoje() ? "Hoje, " : "") + d.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  $("btnHoje").hidden = ehHoje();
+  document.querySelectorAll("#segTurno button").forEach(b => b.setAttribute("aria-pressed", b.dataset.turno === st.turno));
+  const nDia = st.presencas.filter(x => x.data === dataBr()).length;
+  $("subAdd").setAttribute("aria-selected", st.sub === "add");
+  $("subLista").setAttribute("aria-selected", st.sub === "lista");
+  $("subLista").textContent = `Presentes no dia (${nDia})`;
+  $("paneAdd").hidden = st.sub !== "add";
+  $("paneLista").hidden = st.sub !== "lista";
+  if (st.sub === "add") { renderSel(); renderResultados(); } else renderLista();
+}
+
+function renderSel() {
+  const c = $("selCard"), p = st.sel;
+  $("escolhaBox").hidden = !!p;
+  if (!p) { c.hidden = true; return; }
+  const valor = valorPara(p, st.turno), dup = jaEntrou(p.id, st.turno);
+  c.hidden = false;
+  c.innerHTML = `
+    <div class="card-head">
+      <div>
+        <div class="name">${esc(p.nome)}</div>
+        <div class="meta" style="margin-top:6px">${chipTipo(p.tipo)} <span class="hint">${contato(p)}</span></div>
+      </div>
+      <div class="price ${valor === 0 ? "free" : ""}"><b>${brl(valor)}</b><small>${st.turno} · ${dataBr().slice(0, 5)}</small></div>
+    </div>
+    ${dup ? `<div class="banner err">Já está marcado na ${st.turno.toLowerCase()} deste dia.</div>` : ""}
+    ${valor === 0 ? `<div class="hint">Aluno no day use da manhã não paga.</div>` : `
+      <div>
+        <p class="label">Pagamento</p>
+        <div class="opts">
+          <button type="button" data-pago="1" aria-pressed="${st.pago}">Pagou</button>
+          <button type="button" data-pago="0" aria-pressed="${!st.pago}">Vai pagar depois</button>
+        </div>
+      </div>
+      <div ${st.pago ? "" : "hidden"}>
+        <p class="label">Forma</p>
+        <div class="opts">
+          ${["Pix", "Dinheiro", "Cartão"].map(f => `<button type="button" data-forma="${f}" aria-pressed="${st.forma === f}">${f}</button>`).join("")}
+        </div>
+      </div>`}
+    <button class="btn big" id="btnConfirmar" type="button" ${st.ocupado || dup || !st.mcp ? "disabled" : ""}>${st.ocupado ? "Salvando…" : "Confirmar presença"}</button>
+    <button class="link" id="btnTrocar" type="button">Escolher outra pessoa</button>`;
+  $("btnConfirmar").onclick = registrar;
+  $("btnTrocar").onclick = () => { st.sel = null; render(); };
+  c.querySelectorAll("[data-pago]").forEach(b => b.onclick = () => { st.pago = b.dataset.pago === "1"; render(); });
+  c.querySelectorAll("[data-forma]").forEach(b => b.onclick = () => { st.forma = b.dataset.forma; render(); });
+}
+
+function filtrar(lista, texto) {
+  const q = norm(texto); if (!q) return lista;
+  const partes = q.split(" ").filter(Boolean), qd = digitos(q);
+  return lista.filter(p => partes.every(t => p.busca.includes(t)) || (qd.length >= 4 && (p.cpf.includes(qd) || digitos(p.tel).includes(qd))));
+}
+
+function renderResultados() {
+  const box = $("resultados");
+  if (!st.carregado) { box.innerHTML = `<div class="empty">${st.mcp ? "Carregando o cadastro…" : "Esperando conexão com a planilha…"}</div>`; return; }
+  const base = ativos();
+  if (!base.length) { box.innerHTML = `<div class="empty">O cadastro está vazio. Cadastre as pessoas na aba Cadastro.</div>`; return; }
+  const achados = filtrar(base, $("busca").value);
+  if (!achados.length) { box.innerHTML = `<div class="empty">Ninguém no cadastro com “${esc($("busca").value)}”.</div>`; return; }
+  const mostrar = achados.slice(0, MAX_LISTA);
+  box.innerHTML = mostrar.map(p => {
+    const dup = jaEntrou(p.id, st.turno), v = valorPara(p, st.turno);
+    return `<button class="row" type="button" data-id="${esc(p.id)}">
+      <div class="who"><div class="name">${esc(p.nome)}</div><div class="meta">${chipTipo(p.tipo)}</div></div>
+      ${dup ? `<span class="chip ok">Já marcado</span>` : `<span class="rowprice ${v === 0 ? "free" : ""}">${brl(v)}</span>`}
+    </button>`;
+  }).join("") + (achados.length > MAX_LISTA ? `<div class="empty">Mostrando ${MAX_LISTA} de ${achados.length}. Digite parte do nome para filtrar.</div>` : "");
+  box.querySelectorAll("[data-id]").forEach(b => b.onclick = () => {
+    st.sel = st.todos.find(p => p.id === b.dataset.id); st.pago = true; st.forma = "Pix"; render(); window.scrollTo({ top: 0 });
+  });
+}
+
+function renderLista() {
+  const dia = st.presencas.filter(x => x.data === dataBr());
+  const soma = arr => arr.reduce((s, x) => s + x.valor, 0);
+  $("tPessoas").textContent = dia.length;
+  $("tRecebido").textContent = brlCurto(soma(dia.filter(x => x.pago)));
+  $("tPendente").textContent = brlCurto(soma(dia.filter(x => !x.pago)));
+  $("porTurno").innerHTML = ["Manhã", "Tarde"].map(t => {
+    const d = dia.filter(x => x.turno === t), al = d.filter(x => x.tipo === "Aluno").length;
+    return `<b>${t}:</b> ${d.length} (${plural(al, "aluno", "alunos")}, ${plural(d.length - al, "visitante", "visitantes")}) · ${brlCurto(soma(d))}`;
+  }).join("<br>");
+  document.querySelectorAll("#filtro button").forEach(b => b.setAttribute("aria-pressed", b.dataset.f === st.filtro));
+  let lista = dia;
+  if (st.filtro === "Pendentes") lista = dia.filter(x => !x.pago);
+  else if (st.filtro !== "Todos") lista = dia.filter(x => x.turno === st.filtro);
+  lista = [...lista].sort((a, b) => String(b.hora).localeCompare(String(a.hora)));
+  const box = $("listaDia");
+  if (!st.carregado) { box.innerHTML = `<div class="empty">Carregando…</div>`; return; }
+  if (!lista.length) { box.innerHTML = `<div class="empty">${st.filtro === "Pendentes" ? "Ninguém devendo neste dia." : "Ninguém marcado neste dia ainda."}</div>`; return; }
+  box.innerHTML = lista.map(x => {
+    const status = x.valor === 0 ? `<span class="chip ok">Isento</span>` : x.pago ? `<span class="chip ok">${esc(x.forma || "Pago")}</span>` : `<span class="chip pend">A receber</span>`;
+    const recebendo = st.receber === x.id, comAcoes = st.acoes === x.id, confirmando = st.confirmaDel === x.id;
+    const dis = st.ocupado ? "disabled" : "";
+    return `<div class="row" style="flex-wrap:wrap">
+      <div class="who"><div class="name">${esc(x.nome)}</div>
+      <div class="meta">${esc(x.turno)} · ${esc(x.tipo)} · ${x.valor ? brl(x.valor) : "R$ 0"}${x.hora ? " · " + esc(x.hora) : ""}</div></div>
+      ${!x.pago && x.valor > 0 && !recebendo ? `<button class="btn" type="button" data-receber="${esc(x.id)}">Receber</button>` : status}
+      ${recebendo ? `<div class="opts" style="width:100%">${["Pix", "Dinheiro", "Cartão"].map(f => `<button type="button" data-rid="${esc(x.id)}" data-rf="${f}" ${dis}>${f}</button>`).join("")}<button class="link" type="button" data-cancel="1">Cancelar</button></div>` : ""}
+      <div style="width:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        ${comAcoes ? `
+          ${x.pago && x.valor > 0 ? `<button class="btn ghost" type="button" data-desfazer="${esc(x.id)}" ${dis}>Desfazer pagamento</button>` : ""}
+          <button class="btn danger ${confirmando ? "armed" : ""}" style="width:auto" type="button" data-del="${esc(x.id)}" ${dis}>${confirmando ? "Sim, excluir presença" : "Excluir presença"}</button>
+          <button class="link" type="button" data-fechar="1">Fechar</button>
+          ${confirmando ? `<div class="hint" style="width:100%">A linha de ${esc(x.nome)} em ${esc(x.data)} (${esc(x.turno)}) será apagada da planilha${x.pago && x.valor > 0 ? `, junto com o pagamento de ${brl(x.valor)}` : ""}.</div>` : ""}`
+        : `<button class="link" type="button" data-acoes="${esc(x.id)}">Opções</button>`}
+      </div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-receber]").forEach(b => b.onclick = () => { st.receber = b.dataset.receber; st.acoes = null; render(); });
+  box.querySelectorAll("[data-rid]").forEach(b => b.onclick = () => receber(b.dataset.rid, b.dataset.rf));
+  box.querySelectorAll("[data-cancel]").forEach(b => b.onclick = () => { st.receber = null; render(); });
+  box.querySelectorAll("[data-acoes]").forEach(b => b.onclick = () => { st.acoes = b.dataset.acoes; st.confirmaDel = null; st.receber = null; render(); });
+  box.querySelectorAll("[data-fechar]").forEach(b => b.onclick = () => { st.acoes = null; st.confirmaDel = null; render(); });
+  box.querySelectorAll("[data-desfazer]").forEach(b => b.onclick = () => desfazerPagamento(b.dataset.desfazer));
+  box.querySelectorAll("[data-del]").forEach(b => b.onclick = () => excluirPresenca(b.dataset.del));
+}
+
+function renderCad() {
+  const editando = st.editando !== null;
+  $("formPessoa").hidden = !editando;
+  $("cadLista").hidden = editando;
+  document.querySelectorAll("#segTipo button").forEach(b => b.setAttribute("aria-pressed", b.dataset.tipo === st.tipoForm));
+  $("boxMat").hidden = st.tipoForm !== "Aluno";
+  $("boxAtivo").hidden = st.editando === "nova" || !editando;
+  $("btnSalvarPessoa").disabled = st.ocupado || !st.mcp;
+  if (st.ocupado && editando) $("btnSalvarPessoa").textContent = "Salvando…";
+  else if (editando) $("btnSalvarPessoa").textContent = st.editando === "nova" ? "Cadastrar" : "Salvar alterações";
+  const pessoa = editando && st.editando !== "nova" ? st.todos.find(p => p.id === st.editando) : null;
+  $("boxExcluir").hidden = !pessoa;
+  if (pessoa) {
+    const n = st.presencas.filter(x => x.pessoa === pessoa.id).length;
+    $("avisoExcluir").textContent = st.confirmaExcluir
+      ? `Tem certeza? ${pessoa.nome} sai do cadastro.${n ? ` As ${plural(n, "presença registrada", "presenças registradas")} continuam no histórico.` : ""}`
+      : "Se a pessoa só parou de vir, prefira desmarcar \"Ativo\": ela some da lista do day use e o cadastro fica guardado.";
+    $("btnExcluir").textContent = st.ocupado && st.confirmaExcluir ? "Excluindo…" : st.confirmaExcluir ? "Sim, excluir definitivamente" : "Excluir do cadastro";
+    $("btnExcluir").classList.toggle("armed", st.confirmaExcluir);
+    $("btnExcluir").disabled = st.ocupado || !st.mcp;
+  }
+  if (editando) return;
+  document.querySelectorAll("#filtroTipo button").forEach(b => b.setAttribute("aria-pressed", b.dataset.t === st.filtroTipo));
+  const box = $("listaCad");
+  if (!st.carregado) { box.innerHTML = `<div class="empty">Carregando o cadastro…</div>`; return; }
+  let lista = st.filtroTipo === "Todos" ? st.todos : st.todos.filter(p => p.tipo === st.filtroTipo);
+  lista = filtrar(lista, $("buscaCad").value);
+  const nAl = st.todos.filter(p => p.tipo === "Aluno").length;
+  if (!lista.length) { box.innerHTML = `<div class="empty">${st.todos.length ? "Ninguém encontrado." : "Nenhuma pessoa cadastrada ainda. Toque em + Nova pessoa."}</div>`; return; }
+  box.innerHTML = `<div class="row meta" style="padding:8px 14px">${plural(nAl, "aluno", "alunos")} · ${plural(st.todos.length - nAl, "visitante", "visitantes")} · toque para editar</div>` +
+    lista.slice(0, MAX_LISTA * 2).map(p => `<button class="row" type="button" data-edit="${esc(p.id)}">
+      <div class="who"><div class="name">${esc(p.nome)}</div><div class="meta">${contato(p) || "Sem contato"}${p.mat ? " · Mat. " + esc(p.mat) : ""}</div></div>
+      ${p.ativo ? chipTipo(p.tipo) : `<span class="chip pend">Inativo</span>`}
+    </button>`).join("") + (lista.length > MAX_LISTA * 2 ? `<div class="empty">Mostrando ${MAX_LISTA * 2} de ${lista.length}. Use a busca.</div>` : "");
+  box.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => abrirForm(st.todos.find(p => p.id === b.dataset.edit)));
+}
+
+// ---------- eventos ----------
+$("tabDay").onclick = () => { st.aba = "day"; render(); };
+$("tabCad").onclick = () => { st.aba = "cad"; render(); };
+$("btnReload").onclick = () => carregar();
+$("fData").addEventListener("change", e => { if (e.target.value) { st.data = e.target.value; st.sel = null; st.receber = null; render(); } });
+$("btnHoje").onclick = () => { st.data = isoHoje(); st.sel = null; render(); };
+document.querySelectorAll("#segTurno button").forEach(b => b.onclick = () => { st.turno = b.dataset.turno; render(); });
+$("subAdd").onclick = () => { st.sub = "add"; render(); };
+$("subLista").onclick = () => { st.sub = "lista"; st.sel = null; render(); };
+$("busca").addEventListener("input", renderResultados);
+document.querySelectorAll("#filtro button").forEach(b => b.onclick = () => { st.filtro = b.dataset.f; st.receber = null; render(); });
+$("btnNova").onclick = () => abrirForm(null);
+$("btnCancelar").onclick = () => { delete $("formPessoa").dataset.confirmouNome; fecharForm(); };
+$("formPessoa").addEventListener("submit", salvarPessoa);
+$("btnExcluir").onclick = excluirPessoa;
+$("fNome").addEventListener("input", () => delete $("formPessoa").dataset.confirmouNome);
+$("buscaCad").addEventListener("input", renderCad);
+document.querySelectorAll("#segTipo button").forEach(b => b.onclick = () => { st.tipoForm = b.dataset.tipo; render(); });
+document.querySelectorAll("#filtroTipo button").forEach(b => b.onclick = () => { st.filtroTipo = b.dataset.t; render(); });
+
+render();
+st.mcp = { ok: true };
+carregar();
+</script>
+</body>
+</html>
