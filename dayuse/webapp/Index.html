@@ -271,7 +271,7 @@ const $ = id => document.getElementById(id);
 
 // ---------- utilidades ----------
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const norm = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+const norm = s => String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 const digitos = s => String(s ?? "").replace(/\D/g, "");
 const brl = v => v === 0 ? "Isento" : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const brlCurto = v => "R$ " + v.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
